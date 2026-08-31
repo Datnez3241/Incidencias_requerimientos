@@ -63,26 +63,45 @@ async function uploadToServers(data) {
       if (rows.length > 0) {
         existingId = rows[0].id;
         const oldObs = String(rows[0].OBSERVACION || '').trim();
-        const oldDesc = String(rows[0].DESCRIPCION || '').trim();
-        const oldAct = String(rows[0].ACTUALIZACION || '').trim();
+        let oldDesc = String(rows[0].DESCRIPCION || '').trim();
+        let oldAct = String(rows[0].ACTUALIZACION || '').trim();
         const newDesc = String(data.DESCRIPCION || '').trim();
         const newAct = String(data.ACTUALIZACION || '').trim();
         const oldCodigo = String(rows[0].CODIGO || '').trim();
 
-        // 1. DESCRIPCIÓN: Conservar si la nueva viene vacía
-        if (oldDesc && !newDesc) {
-          data.DESCRIPCION = oldDesc;
+        // Si oldDesc u oldAct vienen nulos de Supabase pero existe oldObs, extraerlos
+        if (!oldDesc && oldObs) {
+          const parts = oldObs.split(/\n\n|\r\n\r\n/);
+          const nonNotes = parts.filter(p => !p.trim().startsWith('[') && !p.trim().match(/^-\s*\[/));
+          oldDesc = nonNotes.join('\n\n');
+        }
+        if (!oldAct && oldObs) {
+          const parts = oldObs.split(/\n\n|\r\n\r\n/);
+          const notes = parts.filter(p => p.trim().startsWith('[') || p.trim().match(/^-\s*\[/));
+          oldAct = notes.join('\n\n');
         }
 
-        // 2. ACTUALIZACIÓN (Notas): Fusionar si hay nueva nota
-        if (newAct && oldAct && !oldAct.includes(newAct)) {
-          data.ACTUALIZACION = '[' + formatFecha(new Date()) + '] ' + newAct + '\n\n' + oldAct;
-        } else if (oldAct && !newAct) {
-          data.ACTUALIZACION = oldAct;
+        // 1. DESCRIPCIÓN: Usar la nueva extraída o conservar la previa
+        data.DESCRIPCION = newDesc || oldDesc || "";
+
+        // 2. ACTUALIZACIÓN (Notas): Fusionar con fecha si hay nota nueva
+        if (newAct) {
+          const timestampNote = '[' + formatFecha(new Date()) + '] ' + newAct;
+          if (oldAct && !oldAct.includes(newAct)) {
+            data.ACTUALIZACION = timestampNote + '\n\n' + oldAct;
+          } else if (!oldAct) {
+            data.ACTUALIZACION = timestampNote;
+          } else {
+            data.ACTUALIZACION = oldAct;
+          }
+        } else {
+          data.ACTUALIZACION = oldAct || "";
         }
 
-        // Para retrocompatibilidad
-        data.OBSERVACION = data.ACTUALIZACION || data.DESCRIPCION || oldObs;
+        // Mantener OBSERVACION sincronizada para retrocompatibilidad
+        data.OBSERVACION = data.ACTUALIZACION 
+          ? (data.DESCRIPCION ? data.ACTUALIZACION + '\n\n' + data.DESCRIPCION : data.ACTUALIZACION)
+          : data.DESCRIPCION;
 
         // Proteger CÓDIGO
         if (oldCodigo && oldCodigo.length < 20 && (!data.CODIGO || data.CODIGO.length > 20)) {

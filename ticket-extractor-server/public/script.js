@@ -258,6 +258,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function parseDescAndAct(t) {
+        let desc = String(t.DESCRIPCION || '').trim();
+        let act = String(t.ACTUALIZACION || '').trim();
+        let obs = String(t.OBSERVACION || '').trim();
+
+        if ((!desc || desc === 'null') && (!act || act === 'null') && obs) {
+            const parts = obs.split(/(?:\r?\n){2,}/);
+            let actBlocks = [];
+            let descLines = [];
+
+            parts.forEach(part => {
+                const trimmed = part.trim();
+                if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
+                    actBlocks.push(trimmed);
+                } else if (trimmed) {
+                    descLines.push(trimmed);
+                }
+            });
+
+            if (actBlocks.length > 0) act = actBlocks.join('\n\n');
+            if (descLines.length > 0) desc = descLines.join('\n\n');
+            if (!desc && !act) desc = obs;
+        }
+
+        return {
+            desc: desc && desc !== 'null' ? desc : '-',
+            act: act && act !== 'null' ? act : '-'
+        };
+    }
+
     function exportToCSV(tickets) {
         if (!tickets || tickets.length === 0) {
             alert('No hay datos para exportar.');
@@ -282,10 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
         csvContent += headers.join(';') + "\n";
 
         tickets.forEach(t => {
+            const parsed = parseDescAndAct(t);
             let row = keys.map(k => {
                 let val = t[k];
-                if (k === "DESCRIPCION") val = val || t["OBSERVACION"] || '';
-                if (k === "ACTUALIZACION") val = val || '';
+                if (k === "DESCRIPCION") val = parsed.desc !== '-' ? parsed.desc : '';
+                if (k === "ACTUALIZACION") val = parsed.act !== '-' ? parsed.act : '';
                 if (!val) val = '';
                 // Reemplazar saltos de línea para no romper las filas del CSV
                 val = String(val).replace(/\r\n/g, ' | ').replace(/\n/g, ' | ').replace(/\r/g, ' | ');
@@ -331,8 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeClass = 'curso';
             }
 
-            const descText = t.DESCRIPCION || t.OBSERVACION || '-';
-            const actText = t.ACTUALIZACION || '-';
+            const { desc: descText, act: actText } = parseDescAndAct(t);
 
             tr.innerHTML = `
                 <td><strong>${t.TICKET || '-'}</strong></td>
@@ -364,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn-view" data-index="${i}" title="Ver Detalles" style="background: transparent; border: none; color: #10b981; cursor: pointer; padding: 2px;">
                         <i class="ph ph-eye" style="font-size: 14px;"></i>
                     </button>
-                    <button class="btn-edit" data-id="${t.id}" data-act="${t.ACTUALIZACION || ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Actualización" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
+                    <button class="btn-edit" data-id="${t.id}" data-act="${actText !== '-' ? actText : ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Actualización" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
                         <i class="ph ph-pencil-simple" style="font-size: 14px;"></i>
                     </button>
                     <button class="btn-delete" data-id="${t.id}" title="Eliminar Ticket" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">
@@ -486,12 +516,12 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', (e) => {
                 const idx = e.currentTarget.getAttribute('data-index');
                 const t = tickets[idx];
+                const { desc: descVal, act: actVal } = parseDescAndAct(t);
                 
                 document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.TICKET || 'Sin ID');
                 
                 // --- Extraer el último registro con timestamp [DD/MM/AA HH:mm:ss] ---
-                const actText = t.ACTUALIZACION || t.OBSERVACION || '';
-                // Busca todos los bloques que empiecen con [fecha hora] o - [fecha hora]
+                const actText = actVal !== '-' ? actVal : '';
                 const timestampRegex = /(?:^|[\s-]+)(\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\][\s\S]*?)(?=(?:\s*-?\s*\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\])|$)/g;
                 const matches = [];
                 let match;
@@ -522,9 +552,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <p><strong>Servicio:</strong><br>${t.SERVICIO || '-'}</p>
                     <br>
-                    <p><strong>Descripción de la Solicitud:</strong><br><span style="color:#444;">${t.DESCRIPCION || t.OBSERVACION || '-'}</span></p>
+                    <p><strong>Descripción de la Solicitud:</strong><br><span style="color:#444;">${descVal}</span></p>
                     <br>
-                    <p><strong>Actualización / Pendientes (Bitácora):</strong><br><span style="color:#444;">${t.ACTUALIZACION || '-'}</span></p>
+                    <p><strong>Actualización / Pendientes (Bitácora):</strong><br><span style="color:#444;">${actVal}</span></p>
                     ${lastRecord ? `
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <div style="background-color:#fffacd; border-left: 3px solid #999; padding: 6px 10px;">
