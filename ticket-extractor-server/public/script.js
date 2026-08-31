@@ -303,19 +303,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const headers = [
-            "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", 
-            "DESCRIPCION", "ACTUALIZACION", "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", 
-            "SUBIDA SOLAR", "FUERZA MAYOR", "DOWN TIME CLARO", 
-            "DOWN TIME DAVIVIENDA", "DOWN TIME TOTAL"
+        const allColumns = [
+            { header: "TICKET", key: "TICKET", index: 1 },
+            { header: "RESPONSABLE", key: "RESPONSABLE", index: 2 },
+            { header: "CODIGO", key: "CODIGO", index: 3 },
+            { header: "SERVICIO", key: "SERVICIO", index: 4 },
+            { header: "ESTADO", key: "ESTADO", index: 5 },
+            { header: "DESCRIPCION", key: "DESCRIPCION", index: 6 },
+            { header: "ACTUALIZACION", key: "ACTUALIZACION", index: 7 },
+            { header: "CIERRE", key: "CIERRE", index: 8 },
+            { header: "CREACION TICKET", key: "CREACION TICKET", index: 9 },
+            { header: "INDISPONIBILIDAD", key: "INDISPONIBILIDAD", index: 10 },
+            { header: "SUBIDA SOLAR", key: "SUBIDA SOLAR", index: 11 },
+            { header: "FUERZA MAYOR", key: "FUERZA MAYOR", index: 12 },
+            { header: "DOWN TIME CLARO", key: "DOWN TIME CLARO", index: 13 },
+            { header: "DOWN TIME DAVIVIENDA", key: "DOWN TIME DAVIVIENDA", index: 14 },
+            { header: "DOWN TIME TOTAL", key: "DOWN TIME TOTAL", index: 15 }
         ];
-        
-        const keys = [
-            "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", 
-            "DESCRIPCION", "ACTUALIZACION", "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", 
-            "SUBIDA SOLAR", "FUERZA MAYOR", "DOWN TIME CLARO", 
-            "DOWN TIME DAVIVIENDA", "DOWN TIME TOTAL"
-        ];
+
+        const columnMenu = document.getElementById('columnMenu');
+        let selectedColumns = allColumns;
+
+        if (columnMenu) {
+            const checkboxes = Array.from(columnMenu.querySelectorAll('input[type="checkbox"]'));
+            if (checkboxes.length > 0) {
+                const visibleIndices = checkboxes
+                    .filter(cb => cb.checked)
+                    .map(cb => parseInt(cb.dataset.colIndex, 10));
+                
+                if (visibleIndices.length > 0) {
+                    selectedColumns = allColumns.filter(col => visibleIndices.includes(col.index));
+                }
+            }
+        }
+
+        const headers = selectedColumns.map(c => c.header);
+        const keys = selectedColumns.map(c => c.key);
 
         let csvContent = "\uFEFFsep=;\n"; // BOM for Excel UTF-8 and force semicolon separator
         csvContent += headers.join(';') + "\n";
