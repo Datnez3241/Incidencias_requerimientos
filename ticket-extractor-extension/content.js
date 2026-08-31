@@ -107,10 +107,21 @@ function extractDataCore(requestNote, responsableConfig) {
   let titulo = getValue('input[name="instance/brief.description"]') || getValue('input[alias="instance/brief.description"]') || getValue('#X13') || getTextByLabel('Título:');
   let estado = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getTextByLabel('Estado:');
   
-  let observacion = requestNote ? cleanText(requestNote) : "";
-  if (!observacion) {
-      let smNote = getValue('textarea[name="instance/update.action"]') || getValue('#X237View') || getValue('#X364View') || getValue('.textareaView') || getTextByLabel('Nueva Nota de Trabajo') || getTextByLabel('Actualizar acción:');
-      observacion = cleanText(smNote);
+  let descripcion = cleanText(
+    getValue('#X15View') ||
+    getValue('textarea[name="instance/description"]') ||
+    getValue('#X15') ||
+    getTextByLabel('Descripción:')
+  );
+
+  let actualizacion = requestNote ? cleanText(requestNote) : "";
+  if (!actualizacion) {
+      let smNote = getValue('#X237View') ||
+                   getValue('#X364View') ||
+                   getValue('textarea[name="instance/update.action"]') ||
+                   getTextByLabel('Nueva Nota de Trabajo') ||
+                   getTextByLabel('Actualizar acción:');
+      actualizacion = cleanText(smNote);
   }
 
   let cierre = cleanText(getValue('#X102View') || getValue('#X177View') || getValue('textarea[name="instance/resolution"]') || getTextByLabel('Solución:'));
@@ -181,7 +192,9 @@ function extractDataCore(requestNote, responsableConfig) {
     "CODIGO": codigoReal,
     "SERVICIO": titulo || "SIN SERVICIO",
     "ESTADO": estado || "CERRADO",
-    "OBSERVACION": observacion,
+    "DESCRIPCION": descripcion,
+    "ACTUALIZACION": actualizacion,
+    "OBSERVACION": actualizacion || (descripcion ? descripcion : ""),
     "CIERRE": cierre,
     "CREACION TICKET": creacion || "",
     "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "NO"),

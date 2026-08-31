@@ -266,14 +266,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const headers = [
             "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", 
-            "OBSERVACION", "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", 
+            "DESCRIPCION", "ACTUALIZACION", "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", 
             "SUBIDA SOLAR", "FUERZA MAYOR", "DOWN TIME CLARO", 
             "DOWN TIME DAVIVIENDA", "DOWN TIME TOTAL"
         ];
         
         const keys = [
             "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", 
-            "OBSERVACION", "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", 
+            "DESCRIPCION", "ACTUALIZACION", "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", 
             "SUBIDA SOLAR", "FUERZA MAYOR", "DOWN TIME CLARO", 
             "DOWN TIME DAVIVIENDA", "DOWN TIME TOTAL"
         ];
@@ -283,7 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tickets.forEach(t => {
             let row = keys.map(k => {
-                let val = t[k] || '';
+                let val = t[k];
+                if (k === "DESCRIPCION") val = val || t["OBSERVACION"] || '';
+                if (k === "ACTUALIZACION") val = val || '';
+                if (!val) val = '';
                 // Reemplazar saltos de línea para no romper las filas del CSV
                 val = String(val).replace(/\r\n/g, ' | ').replace(/\n/g, ' | ').replace(/\r/g, ' | ');
                 val = val.replace(/"/g, '""'); // Escapar comillas dobles
@@ -328,13 +331,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeClass = 'curso';
             }
 
+            const descText = t.DESCRIPCION || t.OBSERVACION || '-';
+            const actText = t.ACTUALIZACION || '-';
+
             tr.innerHTML = `
                 <td><strong>${t.TICKET || '-'}</strong></td>
                 <td>${t.RESPONSABLE || '-'}</td>
                 <td>${t.CODIGO || '-'}</td>
                 <td title="${t.SERVICIO || ''}"><div class="obs-cell text-clamp">${t.SERVICIO || '-'}</div></td>
                 <td><span class="badge ${badgeClass}">${status}</span></td>
-                <td title="${t.OBSERVACION || ''}"><div class="obs-cell text-clamp">${t.OBSERVACION || '-'}</div></td>
+                <td title="${descText}"><div class="obs-cell text-clamp">${descText}</div></td>
+                <td title="${actText}"><div class="obs-cell text-clamp">${actText}</div></td>
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>
                 <td>${t.INDISPONIBILIDAD || '-'}</td>
@@ -357,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn-view" data-index="${i}" title="Ver Detalles" style="background: transparent; border: none; color: #10b981; cursor: pointer; padding: 2px;">
                         <i class="ph ph-eye" style="font-size: 14px;"></i>
                     </button>
-                    <button class="btn-edit" data-id="${t.id}" data-obs="${t.OBSERVACION || ''}" title="Editar Observación" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
+                    <button class="btn-edit" data-id="${t.id}" data-act="${t.ACTUALIZACION || ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Actualización" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
                         <i class="ph ph-pencil-simple" style="font-size: 14px;"></i>
                     </button>
                     <button class="btn-delete" data-id="${t.id}" title="Eliminar Ticket" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">
@@ -483,12 +490,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.TICKET || 'Sin ID');
                 
                 // --- Extraer el último registro con timestamp [DD/MM/AA HH:mm:ss] ---
-                const obsText = t.OBSERVACION || '';
+                const actText = t.ACTUALIZACION || t.OBSERVACION || '';
                 // Busca todos los bloques que empiecen con [fecha hora] o - [fecha hora]
                 const timestampRegex = /(?:^|[\s-]+)(\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\][\s\S]*?)(?=(?:\s*-?\s*\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\])|$)/g;
                 const matches = [];
                 let match;
-                while ((match = timestampRegex.exec(obsText)) !== null) {
+                while ((match = timestampRegex.exec(actText)) !== null) {
                     matches.push(match[1].trim());
                 }
                 const lastRecord = matches.length > 0 ? matches[matches.length - 1] : null;
@@ -515,11 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <p><strong>Servicio:</strong><br>${t.SERVICIO || '-'}</p>
                     <br>
-                    <p><strong>Observación Completa:</strong><br><span style="color:#444;">${t.OBSERVACION || '-'}</span></p>
+                    <p><strong>Descripción de la Solicitud:</strong><br><span style="color:#444;">${t.DESCRIPCION || t.OBSERVACION || '-'}</span></p>
+                    <br>
+                    <p><strong>Actualización / Pendientes (Bitácora):</strong><br><span style="color:#444;">${t.ACTUALIZACION || '-'}</span></p>
                     ${lastRecord ? `
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <div style="background-color:#fffacd; border-left: 3px solid #999; padding: 6px 10px;">
-                        <p style="margin:0 0 4px 0;"><strong>⟳ Último Registro:</strong></p>
+                        <p style="margin:0 0 4px 0;"><strong>⟳ Último Registro de Actualización:</strong></p>
                         <p style="margin:0; user-select:text;">${lastRecordHtml}</p>
                     </div>` : ''}
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
@@ -536,10 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.currentTarget.getAttribute('data-id');
-                const oldObs = e.currentTarget.getAttribute('data-obs');
-                const newObs = prompt('Editar observación:', oldObs);
+                const oldAct = e.currentTarget.getAttribute('data-act') || e.currentTarget.getAttribute('data-obs') || '';
+                const newAct = prompt('Editar Actualización / Pendientes:', oldAct);
                 
-                if (newObs !== null && newObs !== oldObs) {
+                if (newAct !== null && newAct !== oldAct) {
                     try {
                         const SUPABASE_URL = 'https://yjcgklhdoohuoxmifpnw.supabase.co';
                         const SUPABASE_KEY = 'sb_publishable_kCR2lZlyJuzIlwjuXArOLQ_IJ3KXxre';
@@ -550,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ OBSERVACION: newObs })
+                            body: JSON.stringify({ ACTUALIZACION: newAct, OBSERVACION: newAct })
                         });
                         if (response.ok) {
                             fetchData(); // Recargar datos

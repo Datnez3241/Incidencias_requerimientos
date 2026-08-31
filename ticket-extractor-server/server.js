@@ -18,10 +18,20 @@ const EXCEL_FILE = path.join(ONEDRIVE_PATH, 'Bitacora Davivienda  2026 - Telefon
 
 // El orden de las columnas que definiste
 const HEADERS = [
-  "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", "OBSERVACION",
+  "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", "DESCRIPCION",
   "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", "SUBIDA SOLAR", "FUERZA MAYOR",
-  "DOWN TIME CLARO", "DOWN TIME DAVIVIENDA", "DOWN TIME  TOTAL"
+  "DOWN TIME CLARO", "DOWN TIME DAVIVIENDA", "DOWN TIME  TOTAL", "ACTUALIZACION"
 ];
+
+function formatFecha(date) {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yy = String(date.getFullYear()).slice(-2);
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${dd}/${mm}/${yy} ${hh}:${min}:${ss}`;
+}
 
 app.post('/append', async (req, res) => {
   try {
@@ -62,41 +72,53 @@ app.post('/append', async (req, res) => {
 
     const targetRow = existingRowIndex !== -1 ? existingRowIndex : rowNum;
     
-    // Columnas mapeadas A-N
+    // Columnas mapeadas A-O
     const colMap = {
-      "TICKET": "A", "RESPONSABLE": "B", "CODIGO": "C", "SERVICIO": "D", "ESTADO": "E", "OBSERVACION": "F",
-      "CIERRE": "G", "CREACION TICKET": "H", "INDISPONIBILIDAD": "I", "SUBIDA SOLAR": "J", "FUERZA MAYOR": "K",
-      "DOWN TIME CLARO": "L", "DOWN TIME DAVIVIENDA": "M", "DOWN TIME  TOTAL": "N"
+      "TICKET": "A", "RESPONSABLE": "B", "CODIGO": "C", "SERVICIO": "D", "ESTADO": "E", "DESCRIPCION": "F",
+      "OBSERVACION": "F", "CIERRE": "G", "CREACION TICKET": "H", "INDISPONIBILIDAD": "I", "SUBIDA SOLAR": "J",
+      "FUERZA MAYOR": "K", "DOWN TIME CLARO": "L", "DOWN TIME DAVIVIENDA": "M", "DOWN TIME  TOTAL": "N",
+      "ACTUALIZACION": "O"
     };
 
     if (existingRowIndex !== -1) {
       // Actualizar fila existente de forma segura
-      HEADERS.forEach(header => {
-        const col = colMap[header];
-        if (header === 'OBSERVACION') {
-          let oldObs = sheet.cell(`${col}${targetRow}`).value() || "";
-          let newObs = data[header] || "";
-          if (newObs && newObs !== "Sin observación") {
-            if (oldObs && oldObs !== "Sin observación") {
-              if (!String(oldObs).includes(newObs)) {
-                sheet.cell(`${col}${targetRow}`).value(oldObs + " | " + newObs);
-              }
-            } else {
-              sheet.cell(`${col}${targetRow}`).value(newObs);
-            }
+      if (data.DESCRIPCION) {
+        let oldDesc = sheet.cell(`F${targetRow}`).value() || "";
+        if (!oldDesc || oldDesc === "Sin observación") {
+          sheet.cell(`F${targetRow}`).value(data.DESCRIPCION);
+        }
+      }
+
+      if (data.ACTUALIZACION && data.ACTUALIZACION !== "Sin observación") {
+        let oldAct = sheet.cell(`O${targetRow}`).value() || "";
+        let newAct = data.ACTUALIZACION;
+        if (oldAct && oldAct !== "Sin observación") {
+          if (!String(oldAct).includes(newAct)) {
+            sheet.cell(`O${targetRow}`).value('[' + formatFecha(new Date()) + '] ' + newAct + '\n\n' + oldAct);
           }
-        } else if (data[header] !== undefined && data[header] !== "") {
-          sheet.cell(`${col}${targetRow}`).value(data[header]);
+        } else {
+          sheet.cell(`O${targetRow}`).value(newAct);
+        }
+      }
+
+      HEADERS.forEach(header => {
+        if (header !== 'DESCRIPCION' && header !== 'ACTUALIZACION' && data[header] !== undefined && data[header] !== "") {
+          const col = colMap[header];
+          if (col) sheet.cell(`${col}${targetRow}`).value(data[header]);
         }
       });
     } else {
       // Agregar nueva fila
       HEADERS.forEach(header => {
         const col = colMap[header];
-        if (data[header] !== undefined) {
+        if (col && data[header] !== undefined) {
           sheet.cell(`${col}${targetRow}`).value(data[header]);
         }
       });
+      // Asegurar el encabezado de la columna O si no existe
+      if (!sheet.cell('O1').value()) {
+        sheet.cell('O1').value('ACTUALIZACION');
+      }
     }
 
     // Guardar los cambios directamente

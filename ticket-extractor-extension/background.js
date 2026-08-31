@@ -29,7 +29,7 @@ async function uploadToServers(data) {
 
   // ── CERROJO 2: En storage (entre reinicios del SW) ──
   // Solo aplica cooldown si NO hay nota nueva — las actualizaciones con nota siempre pasan
-  const hasNote = String(data.OBSERVACION || '').trim().length > 0;
+  const hasNote = String(data.ACTUALIZACION || data.OBSERVACION || '').trim().length > 0;
   const storageKey = `cooldown_${cleanTicket}`;
   
   if (!hasNote) {
@@ -52,7 +52,7 @@ async function uploadToServers(data) {
 
     // ── PASO 1: Buscar si el ticket ya existe en Supabase ──
     const getResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,CODIGO`,
+      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,DESCRIPCION,ACTUALIZACION,CODIGO`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
 
@@ -63,17 +63,28 @@ async function uploadToServers(data) {
       if (rows.length > 0) {
         existingId = rows[0].id;
         const oldObs = String(rows[0].OBSERVACION || '').trim();
-        const newObs = String(data.OBSERVACION || '').trim();
+        const oldDesc = String(rows[0].DESCRIPCION || '').trim();
+        const oldAct = String(rows[0].ACTUALIZACION || '').trim();
+        const newDesc = String(data.DESCRIPCION || '').trim();
+        const newAct = String(data.ACTUALIZACION || '').trim();
         const oldCodigo = String(rows[0].CODIGO || '').trim();
 
-        // Fusionar observaciones: solo agregar si es contenido nuevo
-        if (newObs && oldObs && !oldObs.includes(newObs)) {
-          data.OBSERVACION = '[' + formatFecha(new Date()) + '] ' + newObs + '\n\n' + oldObs;
-        } else if (oldObs && !newObs) {
-          data.OBSERVACION = oldObs; // Conservar la observación vieja si no hay nueva
+        // 1. DESCRIPCIÓN: Conservar si la nueva viene vacía
+        if (oldDesc && !newDesc) {
+          data.DESCRIPCION = oldDesc;
         }
 
-        // Proteger el CÓDIGO si el nuevo es vacío o inválido (UUID) y ya teníamos uno bueno
+        // 2. ACTUALIZACIÓN (Notas): Fusionar si hay nueva nota
+        if (newAct && oldAct && !oldAct.includes(newAct)) {
+          data.ACTUALIZACION = '[' + formatFecha(new Date()) + '] ' + newAct + '\n\n' + oldAct;
+        } else if (oldAct && !newAct) {
+          data.ACTUALIZACION = oldAct;
+        }
+
+        // Para retrocompatibilidad
+        data.OBSERVACION = data.ACTUALIZACION || data.DESCRIPCION || oldObs;
+
+        // Proteger CÓDIGO
         if (oldCodigo && oldCodigo.length < 20 && (!data.CODIGO || data.CODIGO.length > 20)) {
           data.CODIGO = oldCodigo;
         }
@@ -86,7 +97,7 @@ async function uploadToServers(data) {
       : `${SUPABASE_URL}/rest/v1/tickets`;
     const method = existingId ? 'PATCH' : 'POST';
 
-    const saveResp = await fetch(url, {
+    let saveResp = await fetch(url, {
       method,
       headers: {
         'apikey': SUPABASE_KEY,
@@ -96,6 +107,23 @@ async function uploadToServers(data) {
       },
       body: JSON.stringify(data)
     });
+
+    if (!saveResp.ok && saveResp.status === 400) {
+      console.warn('[WARN] Reintentando guardar sin DESCRIPCION/ACTUALIZACION por si no se han creado en Supabase');
+      const fallbackData = { ...data };
+      delete fallbackData.DESCRIPCION;
+      delete fallbackData.ACTUALIZACION;
+      saveResp = await fetch(url, {
+        method,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(fallbackData)
+      });
+    }
 
     if (saveResp.ok) {
       console.log(`[OK] ${cleanTicket} ${existingId ? 'PATCH' : 'POST'} exitoso.`);
