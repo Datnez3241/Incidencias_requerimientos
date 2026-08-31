@@ -151,13 +151,16 @@ function extractDataCore(requestNote, responsableConfig) {
   let titulo = getValue('input[name="instance/brief.description"]') || getValue('input[alias="instance/brief.description"]') || getValue('#X13') || getAnyTextByLabel('Título:');
   let estado = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getAnyTextByLabel('Estado:');
   
-  let descripcion = cleanText(
-    getValue('#X15View') ||
-    getValue('textarea[name="instance/description"]') ||
-    getValue('#X15') ||
-    getAnyTextByLabel('Descripción:') ||
-    getAnyTextByLabel('Descripción')
-  );
+  let descripcionRaw = getValue('#X15View') ||
+                       getValue('textarea[name="instance/description"]') ||
+                       getValue('#X15') ||
+                       getAnyTextByLabel('Descripción:') ||
+                       getAnyTextByLabel('Descripción');
+                       
+  let descripcion = cleanText(descripcionRaw);
+  if (descripcion === "Descripción:" || descripcion === "Descripción" || descripcion.toLowerCase().startsWith("descripción:")) {
+      descripcion = cleanText(descripcion.replace(/^descripción:\s*/i, ''));
+  }
 
   let actualizacion = requestNote ? cleanText(requestNote) : "";
   if (!actualizacion) {

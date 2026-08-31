@@ -263,6 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let act = String(t.ACTUALIZACION || '').trim();
         let obs = String(t.OBSERVACION || '').trim();
 
+        if (desc === 'Descripción:' || desc === 'Descripción' || desc.toLowerCase() === 'null') {
+            desc = '';
+        }
+
         if ((!desc || desc === 'null') && (!act || act === 'null') && obs) {
             const parts = obs.split(/(?:\r?\n){2,}/);
             let actBlocks = [];
@@ -272,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const trimmed = part.trim();
                 if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
                     actBlocks.push(trimmed);
-                } else if (trimmed) {
+                } else if (trimmed && trimmed !== 'Descripción:' && trimmed !== 'Descripción') {
                     descLines.push(trimmed);
                 }
             });
@@ -280,6 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (actBlocks.length > 0) act = actBlocks.join('\n\n');
             if (descLines.length > 0) desc = descLines.join('\n\n');
             if (!desc && !act) desc = obs;
+        }
+
+        if (!desc && t.SERVICIO) {
+            const parts = String(t.SERVICIO).split('+');
+            desc = parts[parts.length - 1].trim();
         }
 
         return {
