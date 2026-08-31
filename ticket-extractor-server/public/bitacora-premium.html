@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitácora Corporativa | Premium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="bitacora-premium.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">KRONOS<span>.LOG</span></div>
+        <nav class="nav-links">
+            <a href="#">Panel de Control</a>
+            <a href="#">Reportes</a>
+            <a href="#">Auditoría</a>
+            <a href="#" class="btn-outline">Nueva Entrada</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-text">
+                <h1>Control &<br>Seguimiento.</h1>
+                <p>Bitácora ejecutiva para la supervisión y resolución de incidencias. Diseñada bajo principios de claridad, asimetría y rigor corporativo.</p>
+            </div>
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2069&auto=format&fit=crop" alt="Espacio corporativo premium">
+            </div>
+        </section>
+
+        <section class="dashboard">
+            <div class="section-header">
+                <h2>Últimas Incidencias</h2>
+                <div class="filters">
+                    <span>Filtro:</span>
+                    <button class="active">Todos</button>
+                    <button>Críticos</button>
+                    <button>Resueltos</button>
+                </div>
+            </div>
+
+            <div class="data-grid">
+                <!-- Column Headers -->
+                <div class="grid-row grid-header">
+                    <div class="col">ID / Fecha</div>
+                    <div class="col">Descripción del Suceso</div>
+                    <div class="col">Responsable</div>
+                    <div class="col">Estado</div>
+                </div>
+
+                <!-- Row 1 -->
+                <div class="grid-row">
+                    <div class="col metadata">
+                        <span class="id">#INC-4092</span>
+                        <span class="date">29 Ago 2026</span>
+                    </div>
+                    <div class="col description">
+                        <h3>Caída de servidor principal en región EMEA</h3>
+                        <p>Los sistemas de respaldo no se activaron según el protocolo esperado durante el mantenimiento programado.</p>
+                    </div>
+                    <div class="col owner">A. Vanderbilt</div>
+                    <div class="col status">
+                        <span class="badge critical">Crítico</span>
+                    </div>
+                </div>
+
+                <!-- Row 2 -->
+                <div class="grid-row">
+                    <div class="col metadata">
+                        <span class="id">#REQ-4091</span>
+                        <span class="date">28 Ago 2026</span>
+                    </div>
+                    <div class="col description">
+                        <h3>Actualización de políticas de acceso</h3>
+                        <p>Despliegue de nuevos certificados de seguridad para el departamento de finanzas e infraestructura.</p>
+                    </div>
+                    <div class="col owner">M. Sterling</div>
+                    <div class="col status">
+                        <span class="badge resolved">Resuelto</span>
+                    </div>
+                </div>
+                
+                <!-- Row 3 -->
+                <div class="grid-row">
+                    <div class="col metadata">
+                        <span class="id">#INC-4090</span>
+                        <span class="date">27 Ago 2026</span>
+                    </div>
+                    <div class="col description">
+                        <h3>Discrepancia en métricas de facturación Q3</h3>
+                        <p>El extractor de tickets reporta una varianza del 2.4% frente a la base de datos maestra operativa.</p>
+                    </div>
+                    <div class="col owner">E. Thorne</div>
+                    <div class="col status">
+                        <span class="badge pending">En Revisión</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
