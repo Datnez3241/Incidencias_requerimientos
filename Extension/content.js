@@ -16,7 +16,10 @@ const getActiveContainer = (doc) => {
   let ticketElements = Array.from(doc.querySelectorAll('input[name="instance/number"], input[alias="instance/number"], #X17, #X13'));
   
   if (ticketElements.length === 0) {
-      let labels = Array.from(doc.querySelectorAll('label, span, div')).filter(el => el.textContent.trim() === 'ID de incidente:');
+      let labels = Array.from(doc.querySelectorAll('label, span, div')).filter(el => {
+        const text = el.textContent.trim();
+        return text === 'ID de incidente:' || text === 'ID de la petición:' || text === 'ID de incidente' || text === 'ID de la petición';
+      });
       ticketElements = labels;
   }
 
@@ -24,7 +27,7 @@ const getActiveContainer = (doc) => {
   if (activeEl) {
     const form = activeEl.closest('form');
     if (form) return form;
-    const panel = activeEl.closest('[role="tabpanel"], .x-panel');
+    const panel = activeEl.closest('.x-panel-body, .x-panel, body');
     if (panel) return panel;
     return doc;
   }
@@ -77,30 +80,40 @@ function extractDataCore(requestNote, responsableConfig) {
   const activeContainer = getActiveContainer(rootDoc) || rootDoc;
 
   const getValue = (selector) => {
-    const el = activeContainer.querySelector(selector);
+    let el = activeContainer ? activeContainer.querySelector(selector) : null;
+    if (!el && rootDoc) el = rootDoc.querySelector(selector);
     if (!el) return "";
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return el.value.trim();
-    return el.innerText.trim();
+    return el.innerText ? el.innerText.trim() : el.textContent.trim();
   };
 
   const getTextByLabel = (labelText) => {
-    let elements = Array.from(activeContainer.querySelectorAll('label, div, span, td'));
-    let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0);
-    if (!labelEl) return "";
-    
-    let next = labelEl.nextElementSibling;
-    if (!next && labelEl.parentElement) {
-        next = labelEl.parentElement.nextElementSibling;
+    const searchInContainer = (container) => {
+      if (!container) return "";
+      let elements = Array.from(container.querySelectorAll('label, div, span, td, a'));
+      let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0);
+      if (!labelEl) return "";
+      
+      let next = labelEl.nextElementSibling;
+      if (!next && labelEl.parentElement) {
+          next = labelEl.parentElement.nextElementSibling;
+      }
+      
+      if (next) {
+        const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
+        const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
+        if (visibleInput) return visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
+        if (inputs.length > 0) return inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
+        return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? next.value.trim() : next.textContent.trim();
+      }
+      return "";
+    };
+
+    let res = searchInContainer(activeContainer);
+    if (!res && activeContainer && activeContainer !== rootDoc) {
+      res = searchInContainer(rootDoc);
     }
-    
-    if (next) {
-      const inputs = Array.from(next.querySelectorAll('input, textarea'));
-      const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
-      if (visibleInput) return visibleInput.value.trim();
-      if (inputs.length > 0) return inputs[0].value.trim();
-      return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? next.value.trim() : next.textContent.trim();
-    }
-    return "";
+    return res;
   };
 
   const parseSMWorkNotes = (rawText) => {
