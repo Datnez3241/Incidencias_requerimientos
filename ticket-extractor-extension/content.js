@@ -103,25 +103,79 @@ function extractDataCore(requestNote, responsableConfig) {
     return "";
   };
 
-  let codigo = getValue('input[name="instance/number"]') || getValue('input[alias="instance/number"]') || getValue('#X17') || getTextByLabel('ID de incidente:') || getTextByLabel('ID de la petición:');
-  let titulo = getValue('input[name="instance/brief.description"]') || getValue('input[alias="instance/brief.description"]') || getValue('#X13') || getTextByLabel('Título:');
-  let estado = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getTextByLabel('Estado:');
+  const parseSMWorkNotes = (rawText) => {
+    if (!rawText) return "";
+    const cleaned = cleanText(rawText);
+    if (!cleaned) return "";
+
+    const noteRegex = /----\s*(\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2})[^\n]*\n([\s\S]*?)(?=(?:----\s*\d{2}\/\d{2}\/\d{2,4}|$))/g;
+    let matches = [];
+    let m;
+    while ((m = noteRegex.exec(cleaned)) !== null) {
+      let dateStr = m[1].trim();
+      let content = m[2].replace(/^[-=]+\s*/, '').trim();
+      if (content && content !== '.') {
+        matches.push(`[${dateStr}] ${content}`);
+      }
+    }
+
+    if (matches.length > 0) {
+      return matches.join('\n\n');
+    }
+
+    return cleaned;
+  };
+
+  const getAnyTextByLabel = (labelText) => {
+    let val = getTextByLabel(labelText);
+    if (!val && activeContainer !== rootDoc) {
+      try {
+        let elements = Array.from(rootDoc.querySelectorAll('label, div, span, td'));
+        let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0);
+        if (labelEl) {
+          let next = labelEl.nextElementSibling || (labelEl.parentElement ? labelEl.parentElement.nextElementSibling : null);
+          if (next) {
+            const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
+            const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
+            if (visibleInput) return visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
+            if (inputs.length > 0) return inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
+            return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? next.value.trim() : next.textContent.trim();
+          }
+        }
+      } catch(e) {}
+    }
+    return val;
+  };
+
+  let codigo = getValue('input[name="instance/number"]') || getValue('input[alias="instance/number"]') || getValue('#X17') || getAnyTextByLabel('ID de incidente:') || getAnyTextByLabel('ID de la petición:');
+  let titulo = getValue('input[name="instance/brief.description"]') || getValue('input[alias="instance/brief.description"]') || getValue('#X13') || getAnyTextByLabel('Título:');
+  let estado = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getAnyTextByLabel('Estado:');
   
   let descripcion = cleanText(
     getValue('#X15View') ||
     getValue('textarea[name="instance/description"]') ||
     getValue('#X15') ||
-    getTextByLabel('Descripción:')
+    getAnyTextByLabel('Descripción:') ||
+    getAnyTextByLabel('Descripción')
   );
 
   let actualizacion = requestNote ? cleanText(requestNote) : "";
   if (!actualizacion) {
       let smNote = getValue('#X237View') ||
-                   getValue('#X364View') ||
                    getValue('textarea[name="instance/update.action"]') ||
-                   getTextByLabel('Nueva Nota de Trabajo') ||
-                   getTextByLabel('Actualizar acción:');
+                   getAnyTextByLabel('Nueva Nota de Trabajo') ||
+                   getAnyTextByLabel('Actualizar acción:');
       actualizacion = cleanText(smNote);
+  }
+
+  if (!actualizacion) {
+      let historialNotas = getAnyTextByLabel('Notas de Trabajo:') ||
+                           getAnyTextByLabel('Notas de Trabajo') ||
+                           getValue('#X364View') ||
+                           getValue('textarea[name="instance/action"]');
+      if (historialNotas) {
+          actualizacion = parseSMWorkNotes(historialNotas);
+      }
   }
 
   let cierre = cleanText(getValue('#X102View') || getValue('#X177View') || getValue('textarea[name="instance/resolution"]') || getTextByLabel('Solución:'));
