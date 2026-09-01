@@ -79,36 +79,44 @@ function extractDataCore(requestNote, responsableConfig) {
   
   const activeContainer = getActiveContainer(rootDoc) || rootDoc;
 
-  // Obtener todos los documentos accesibles (rootDoc + iframes)
-  const getAllDocs = () => {
-    const docs = [rootDoc];
-    try {
-      const frames = rootDoc.querySelectorAll('iframe, frame');
-      for (const frame of frames) {
-        try {
-          if (frame.contentDocument) docs.push(frame.contentDocument);
-        } catch(e) {}
-      }
-      // Buscar también en iframes anidados
-      for (const frame of frames) {
-        try {
-          const nestedFrames = frame.contentDocument && frame.contentDocument.querySelectorAll('iframe, frame');
-          if (nestedFrames) {
-            for (const nf of nestedFrames) {
-              try { if (nf.contentDocument) docs.push(nf.contentDocument); } catch(e) {}
+  // ── PASO CLAVE: Encontrar el documento exacto que contiene el ticket VISIBLE activo ──
+  // Busca en rootDoc y en todos sus iframes el input[name="instance/number"] que sea
+  // visible en pantalla. Ese documento es la fuente única de verdad para la extracción.
+  const findActiveTicketDoc = () => {
+    // Función auxiliar: recorre doc + sus iframes recursivamente
+    const searchDoc = (doc) => {
+      try {
+        const inputs = doc.querySelectorAll('input[name="instance/number"], input[alias="instance/number"], #X18');
+        for (const inp of inputs) {
+          try {
+            if (isTrulyVisible(inp) && /^(IM|RF)\d+/i.test(inp.value || '')) {
+              return doc; // Este documento tiene el ticket activo visible
             }
-          }
-        } catch(e) {}
-      }
-    } catch(e) {}
-    return docs;
+          } catch(e) {}
+        }
+        // No encontrado aquí, revisar iframes hijos
+        const frames = doc.querySelectorAll('iframe, frame');
+        for (const frame of frames) {
+          try {
+            if (frame.contentDocument) {
+              const found = searchDoc(frame.contentDocument);
+              if (found) return found;
+            }
+          } catch(e) {}
+        }
+      } catch(e) {}
+      return null;
+    };
+    return searchDoc(rootDoc) || rootDoc;
   };
-  const allDocs = getAllDocs();
+
+  // Documento autoritativo: solo de aquí extraemos los datos
+  const ticketDoc = findActiveTicketDoc();
 
   const getValue = (selector) => {
-    // Buscar en todos los documentos accesibles
-    for (const doc of allDocs) {
-      const el = doc.querySelector(selector);
+    // Primero buscar en el documento del ticket activo
+    try {
+      const el = ticketDoc.querySelector(selector);
       if (el) {
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
         let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
@@ -117,7 +125,19 @@ function extractDataCore(requestNote, responsableConfig) {
         }
         if (text) return text;
       }
-    }
+    } catch(e) {}
+    // Fallback: rootDoc si ticketDoc falla
+    try {
+      const el = rootDoc.querySelector(selector);
+      if (el) {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
+        let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
+        if (text && text.includes('hpsm.widgets')) {
+          text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+        }
+        if (text) return text;
+      }
+    } catch(e) {}
     return "";
   };
 
@@ -151,8 +171,8 @@ function extractDataCore(requestNote, responsableConfig) {
       return "";
     };
 
-    let res = searchInContainer(activeContainer);
-    if (!res && activeContainer && activeContainer !== rootDoc) {
+    let res = searchInContainer(ticketDoc);
+    if (!res && ticketDoc !== rootDoc) {
       res = searchInContainer(rootDoc);
     }
     return res;
@@ -183,9 +203,10 @@ function extractDataCore(requestNote, responsableConfig) {
 
   const getAnyTextByLabel = (labelText) => {
     let val = getTextByLabel(labelText);
-    if (!val && activeContainer !== rootDoc) {
+    if (!val) {
+      // Intentar directamente en ticketDoc si es diferente del contexto ya buscado
       try {
-        let elements = Array.from(rootDoc.querySelectorAll('label, div, span, td'));
+        let elements = Array.from(ticketDoc.querySelectorAll('label, div, span, td'));
         let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0);
         if (labelEl) {
           let next = labelEl.nextElementSibling || (labelEl.parentElement ? labelEl.parentElement.nextElementSibling : null);
@@ -193,12 +214,12 @@ function extractDataCore(requestNote, responsableConfig) {
             const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
             const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
             if (visibleInput) {
-                let val = visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
-                return val.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+                let v = visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
+                return v.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
             }
             if (inputs.length > 0) {
-                let val = inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
-                return val.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+                let v = inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
+                return v.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
             }
             let nextVal = (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? (next.value || "").trim() : next.textContent.trim();
             return nextVal.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
@@ -208,6 +229,7 @@ function extractDataCore(requestNote, responsableConfig) {
     }
     return val;
   };
+
 
   let codigo = getValue('input[name="instance/number"]') 
              || getValue('input[alias="instance/number"]') 
