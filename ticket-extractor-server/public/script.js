@@ -443,13 +443,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="td-toggle">
                     <span class="btn-toggle ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
                           data-id="${t.id}" data-field="SUBIDA SOLAR" data-value="${t['SUBIDA SOLAR']||'NO'}">
-                        ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'SI':'NO'}
+                        ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'Si':'No'}
                     </span>
                 </td>
                 <td class="td-toggle">
                     <span class="btn-toggle ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
                           data-id="${t.id}" data-field="FUERZA MAYOR" data-value="${t['FUERZA MAYOR']||'NO'}">
-                        ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'SI':'NO'}
+                        ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'Si':'No'}
                     </span>
                 </td>
                 <td>${t["DOWN TIME CLARO"] || '0'}</td>
@@ -488,8 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sinoDropdown.className = 'sino-dropdown';
         sinoDropdown.style.display = 'none';
         sinoDropdown.innerHTML = `
-            <label class="sino-option" data-val="SI"><input type="radio" name="sinoval" value="SI"> SI</label>
-            <label class="sino-option" data-val="NO"><input type="radio" name="sinoval" value="NO"> NO</label>
+            <label class="sino-option" data-val="SI"><input type="radio" name="sinoval" value="SI"> Si</label>
+            <label class="sino-option" data-val="NO"><input type="radio" name="sinoval" value="NO"> No</label>
         `;
         document.body.appendChild(sinoDropdown);
 
@@ -500,8 +500,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const field = el.getAttribute('data-field');
             const currentVal = el.getAttribute('data-value').toUpperCase();
 
-            // Actualizar visualmente de inmediato
-            el.textContent = newVal;
+            // Actualizar visualmente de inmediato (convirtiendo a Si/No)
+            el.textContent = newVal === 'SI' ? 'Si' : 'No';
             el.setAttribute('data-value', newVal);
             el.classList.toggle('toggle-si', newVal === 'SI');
             el.classList.toggle('toggle-no', newVal === 'NO');
@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     // Revertir si falla
-                    el.textContent = currentVal;
+                    el.textContent = currentVal === 'SI' ? 'Si' : 'No';
                     el.setAttribute('data-value', currentVal);
                     el.classList.toggle('toggle-si', currentVal === 'SI');
                     el.classList.toggle('toggle-no', currentVal === 'NO');
