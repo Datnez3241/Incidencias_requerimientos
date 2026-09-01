@@ -19,20 +19,13 @@ const isTrulyVisible = (elem) => {
     if (x >= 0 && x <= (window.innerWidth || document.documentElement.clientWidth) &&
         y >= 0 && y <= (window.innerHeight || document.documentElement.clientHeight)) {
         
-        const topEl = document.elementFromPoint(x, y);
-        if (!topEl) return false;
+        const elementsAtPoint = document.elementsFromPoint(x, y);
+        if (!elementsAtPoint || elementsAtPoint.length === 0) return false;
         
-        if (elem.contains(topEl) || topEl.contains(elem)) return true;
-        
-        // Handle ExtJS read-only masks and transparent overlays
-        let current = topEl;
-        let distance = 0;
-        while (current && distance < 5) {
-            if (current.contains(elem)) return true;
-            current = current.parentElement;
-            distance++;
-        }
-        return false;
+        // Verificamos si el elemento está entre las primeras 10 capas visibles.
+        // Esto permite atravesar "máscaras transparentes" (Cerrado/Read-only en ExtJS) 
+        // pero rechaza los elementos de pestañas en segundo plano (que están muy enterrados).
+        return elementsAtPoint.slice(0, 10).includes(elem);
     }
   } catch (e) {}
 
