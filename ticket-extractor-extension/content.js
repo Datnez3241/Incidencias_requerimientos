@@ -7,8 +7,35 @@ window.ticketExtractorInjected = true;
 const isTrulyVisible = (elem) => {
   const rect = elem.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) return false;
+  if (rect.right < 0 || rect.bottom < 0) return false;
+  
   const style = window.getComputedStyle(elem);
-  if (style.visibility === 'hidden' || style.display === 'none') return false;
+  if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+  
+  // En aplicaciones como HPSM/ExtJS, las pestañas ocultas a veces se apilan detrás de la activa.
+  // Verificamos si el elemento (o un contenedor cercano) es visible usando elementFromPoint
+  try {
+    // Tomar un punto central del elemento
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    // Asegurarse de que el punto esté dentro del viewport
+    if (x >= 0 && x <= (window.innerWidth || document.documentElement.clientWidth) &&
+        y >= 0 && y <= (window.innerHeight || document.documentElement.clientHeight)) {
+        
+        const topEl = document.elementFromPoint(x, y);
+        // Si el elemento en ese punto no es nuestro elemento ni un descendiente, probablemente está oculto detrás de otra pestaña
+        if (topEl && !elem.contains(topEl) && !topEl.contains(elem)) {
+            // Permitimos un margen de error si están en el mismo contenedor de formulario
+            const form1 = elem.closest('form');
+            const form2 = topEl.closest('form');
+            if (!form1 || form1 !== form2) {
+                return false;
+            }
+        }
+    }
+  } catch (e) {}
+
   return true;
 };
 
@@ -114,30 +141,44 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
   const ticketDoc = findActiveTicketDoc();
 
   const getValue = (selector) => {
-    // Primero buscar en el documento del ticket activo
+    const extractText = (el) => {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
+      let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
+      if (text && text.includes('hpsm.widgets')) text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+      return text;
+    };
+
+    // 1. activeContainer (solo visibles)
     try {
-      const el = ticketDoc.querySelector(selector);
-      if (el) {
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
-        let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
-        if (text && text.includes('hpsm.widgets')) {
-          text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+      const els = activeContainer.querySelectorAll(selector);
+      for (let el of els) {
+        if (isTrulyVisible(el)) {
+          let text = extractText(el);
+          if (text) return text;
         }
-        if (text) return text;
       }
     } catch(e) {}
-    // Fallback: rootDoc si ticketDoc falla
+    
+    // 2. ticketDoc (solo visibles)
+    try {
+      const els = ticketDoc.querySelectorAll(selector);
+      for (let el of els) {
+        if (isTrulyVisible(el)) {
+          let text = extractText(el);
+          if (text) return text;
+        }
+      }
+    } catch(e) {}
+
+    // 3. Fallback rootDoc (original behaviour)
     try {
       const el = rootDoc.querySelector(selector);
       if (el) {
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
-        let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
-        if (text && text.includes('hpsm.widgets')) {
-          text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
-        }
+        let text = extractText(el);
         if (text) return text;
       }
     } catch(e) {}
+    
     return "";
   };
 
@@ -146,7 +187,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
     const searchInContainer = (container) => {
       if (!container) return "";
       let elements = Array.from(container.querySelectorAll('label, div, span, td, a'));
-      let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0);
+      let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0 && isTrulyVisible(el));
       if (!labelEl) return "";
       
       let next = labelEl.nextElementSibling;
@@ -207,7 +248,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
       // Intentar directamente en ticketDoc si es diferente del contexto ya buscado
       try {
         let elements = Array.from(ticketDoc.querySelectorAll('label, div, span, td'));
-        let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0);
+        let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0 && isTrulyVisible(el));
         if (labelEl) {
           let next = labelEl.nextElementSibling || (labelEl.parentElement ? labelEl.parentElement.nextElementSibling : null);
           if (next) {
