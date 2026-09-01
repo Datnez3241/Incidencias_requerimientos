@@ -103,6 +103,7 @@
   <h2>Extractor de Casos</h2>
   <p>Abre un ticket (IM o RF) y haz clic para guardar en la nube.</p>
   
+  <!-- Sección: Configuración General -->
   <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #e5e7eb; padding: 8px; border-radius: 6px;">
     <label style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">2do Plano:</label>
     <button id="autoExtractToggleBtn" class="toggle-btn toggle-on">ACTIVADO</button>
@@ -124,22 +125,45 @@
     </select>
   </div>
 
-  <div style="margin-bottom: 8px;">
-    <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #374151;">Causa:</label>
-    <select id="causaSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
-      <option value="">-- Sin causa --</option>
-      <option value="FIBRA">FIBRA</option>
-      <option value="IP RAN">IP RAN</option>
-      <option value="MOVIL">MÓVIL</option>
-      <option value="RADIO">RADIO</option>
-      <option value="CLIENTE">CLIENTE</option>
-    </select>
+  <!-- Sección: Clasificación del Ticket -->
+  <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f9fafb;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 8px; text-align: left;">Clasificación</label>
+    
+    <div style="margin-bottom: 8px;">
+      <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #374151;">Operación:</label>
+      <select id="platformSelectMain" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+        <option value="Telefonía">Telefonía</option>
+        <option value="Datos">Datos</option>
+        <option value="Hotspot">Hotspot</option>
+        <option value="Corredores">Corredores</option>
+        <option value="Cultivarte">Cultivarte</option>
+      </select>
+    </div>
+
+    <div>
+      <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #374151;">Causa:</label>
+      <select id="causaSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+        <option value="">-- Sin causa --</option>
+        <option value="FIBRA">FIBRA</option>
+        <option value="IP RAN">IP RAN</option>
+        <option value="MOVIL">MÓVIL</option>
+        <option value="RADIO">RADIO</option>
+        <option value="CLIENTE">CLIENTE</option>
+      </select>
+    </div>
   </div>
 
-  <textarea id="updateNote" rows="3" placeholder="Si deseas actualizar el caso manual, escribe aquí..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></textarea>
-  <br><br>
-  <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
-  <button id="sharepointBtn" class="sharepoint-btn">📋 Enviar a SharePoint</button>
+  <!-- Sección: Actualización Manual -->
+  <div style="margin-bottom: 12px;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 4px; text-align: left;">Actualización Manual</label>
+    <textarea id="updateNote" rows="3" placeholder="Si deseas actualizar el caso manual, escribe aquí..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></textarea>
+  </div>
+
+  <!-- Sección: Acciones -->
+  <div style="margin-bottom: 8px;">
+    <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
+    <button id="sharepointBtn" class="sharepoint-btn">📋 Enviar a SharePoint</button>
+  </div>
   <div id="status"></div>
 
   <script src="popup.js"></script>
