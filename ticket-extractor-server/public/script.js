@@ -248,8 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (response.ok) {
                 const data = await response.json();
-                allTickets = data;
-                applyFilters(); // Aplica filtros y actualiza currentFilteredTickets
+                allTickets = data.map(t => {
+                    if (!t.OPERACION && t.PLATAFORMA) {
+                        t.OPERACION = t.PLATAFORMA;
+                    }
+                    return t;
+                });
+                applyFilters();
             } else {
                 console.error("Error from Supabase:", await response.text());
             }
