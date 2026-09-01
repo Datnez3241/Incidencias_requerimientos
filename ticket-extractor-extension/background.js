@@ -38,6 +38,14 @@ async function uploadToServers(data) {
     const now = Date.now();
     if (now - lastUpload < COOLDOWN_MS) {
       console.log(`[COOLDOWN] ${cleanTicket} (sin nota) guardado hace ${Math.round((now - lastUpload)/1000)}s. Ignorando.`);
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, { 
+            action: 'showToastMsg', 
+            msg: `Espera unos segundos antes de volver a subir este ticket.` 
+          }).catch(() => {});
+        }
+      });
       delete inMemoryLocks[cleanTicket];
       return;
     }
@@ -52,7 +60,7 @@ async function uploadToServers(data) {
 
     // ── PASO 1: Buscar si el ticket ya existe en Supabase ──
     const getResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,DESCRIPCION,ACTUALIZACION,CODIGO,PLATAFORMA`,
+      `${SUPABASE_URL}/rest/v1/tickets?IM=eq.${cleanTicket}&select=id,OBSERVACION,DESCRIPCION,ACTUALIZACION,CODIGO,PLATAFORMA`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
 
@@ -118,11 +126,13 @@ async function uploadToServers(data) {
 
     // Mapeo para Supabase (para no obligar a modificar las columnas en la DB)
     const supabaseData = { ...data };
+    supabaseData.IM = data.TICKET;
     supabaseData.DESCRIPCION = data.CAUSA;
     supabaseData.ACTUALIZACION = data.DESCRIPCION;
     supabaseData.PLATAFORMA = data.OPERACION;
     delete supabaseData.CAUSA;
     delete supabaseData.OPERACION;
+    delete supabaseData.TICKET;
 
     let saveResp = await fetch(url, {
       method,
@@ -158,6 +168,16 @@ async function uploadToServers(data) {
     } else {
       const err = await saveResp.text();
       console.error(`[ERROR] Supabase ${method} falló: ${saveResp.status} - ${err}`);
+      
+      // Enviar el error a la pestaña para que el usuario lo vea
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, { 
+            action: 'showToastMsg', 
+            msg: `Error Supabase (${saveResp.status}): ${err.substring(0, 100)}` 
+          }).catch(() => {});
+        }
+      });
     }
 
     // También guardar en servidor local (Excel)
@@ -169,6 +189,14 @@ async function uploadToServers(data) {
 
   } catch (error) {
     console.error('[ERROR] Upload falló:', error);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { 
+          action: 'showToastMsg', 
+          msg: `Error interno de Extensión: ${error.message}` 
+        }).catch(() => {});
+      }
+    });
     chrome.storage.local.remove(storageKey);
   } finally {
     setTimeout(() => { delete inMemoryLocks[cleanTicket]; }, COOLDOWN_MS);
@@ -187,5 +215,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.tabs.sendMessage(sender.tab.id, { action: 'showToastMsg', msg: 'Guardando en nube... ☁️' }, { frameId: 0 })
         .catch(e => console.log(e));
     }
+  } else if (request.action === 'openAndFillSharePoint') {
+    chrome.tabs.create({ url: request.url, active: true }, (tab) => {
+      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          // Retardo para dar tiempo a que React renderice los campos
+          setTimeout(() => {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['sharepoint_filler.js']
+            }).catch(err => console.error("[TicketExtractor] Error inyectando sharepoint_filler", err));
+          }, 3500);
+        }
+      });
+    });
   }
 });

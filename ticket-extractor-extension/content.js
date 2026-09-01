@@ -277,7 +277,9 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
   }
 
   let titulo = getValue('input[name="instance/brief.description"]') || getValue('input[alias="instance/brief.description"]') || getValue('#X13') || getAnyTextByLabel('Título:');
-  let estado = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getAnyTextByLabel('Estado:');
+  let estadoRaw = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getAnyTextByLabel('Estado:');
+  let estadoLowerStr = (estadoRaw || "").toLowerCase();
+  let estado = estadoLowerStr.includes('cerrado') ? "Cerrado" : "Abierto";
   
   let descripcionRaw = getValue('#X15View') ||
                        getValue('textarea[name="instance/description"]') ||
@@ -313,6 +315,9 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
   
   let creacion = getValue('input[name="instance/downtime.start"]') || getValue('input[alias="instance/downtime.start"]') || getValue('#X62') || getValue('input[name="instance/submit.date"]');
   let finInterrupcion = getValue('input[name="instance/downtime.end"]') || getValue('input[alias="instance/downtime.end"]') || getValue('#X66');
+  if (finInterrupcion && (finInterrupcion.includes('Fin de la interrupción') || finInterrupcion.includes('Fin de Interrupción'))) {
+    finInterrupcion = ""; // Prevent grabbing the label text by mistake
+  }
   
   let isRF = (codigo || "").toUpperCase().startsWith('RF');
   if (isRF) finInterrupcion = ""; 
@@ -353,8 +358,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
   let dtClaro = "";
   let dtDavi = "";
   let downtimeTotal = "";
-  const estadoLower = (estado || "").toLowerCase();
-  let isAbierto = !estadoLower.includes('cerrado') && !estadoLower.includes('resuelto');
+  let isAbierto = estado === "Abierto";
 
   if (creacion && finInterrupcion && !isRF && !isAbierto) {
     const startMs = parseSMDate(creacion);
@@ -384,7 +388,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
     "DESCRIPCION": actualizacion,
     "CIERRE": cierre || "PENDIENTE",
     "CREACION TICKET": creacion || "",
-    "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "NO"),
+    "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "PENDIENTE"),
     "SUBIDA SOLAR": subidaSolarDate || "",
     "FUERZA MAYOR": "NO",
     "DOWN TIME CLARO": dtClaro,
@@ -440,7 +444,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         navigator.clipboard.writeText(request.note).catch(err => console.log('Error al copiar al portapapeles: ', err));
     }
 
-    data.OPERACION = request.platform || "Telefonía";
+    data.OPERACION = request.platform || "Telefonia";
     // Si el usuario seleccionó una causa en el popup, tiene prioridad
     if (request.causa) {
         data.CAUSA = request.causa;
@@ -471,7 +475,7 @@ function triggerBackgroundExtraction() {
     chrome.storage.local.get(['autoExtractEnabled', 'savedPlatform', 'savedResponsable', 'savedCausa', 'savedSubidaSolarDate'], (result) => {
         if (result.autoExtractEnabled === false) return;
 
-        let platform = result.savedPlatform || "Telefonía";
+        let platform = result.savedPlatform || "Telefonia";
         let responsable = result.savedResponsable || "DIEGO";
         let savedCausa = result.savedCausa || "";
         let savedSubidaSolarDate = result.savedSubidaSolarDate || "";

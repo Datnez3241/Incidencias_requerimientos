@@ -340,8 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { header: "RESPONSABLE", key: "RESPONSABLE", index: 3 },
             { header: "CODIGO", key: "CODIGO", index: 4 },
             { header: "SERVICIO", key: "SERVICIO", index: 5 },
-            { header: "ESTADO", key: "ESTADO", index: 6 },
-            { header: "CAUSA", key: "CAUSA", index: 7 },
+            { header: "CAUSA", key: "CAUSA", index: 6 },
+            { header: "ESTADO", key: "ESTADO", index: 7 },
             { header: "DESCRIPCION", key: "DESCRIPCION", index: 8 },
             { header: "CIERRE", key: "CIERRE", index: 9 },
             { header: "CREACION TICKET", key: "CREACION TICKET", index: 10 },
@@ -434,8 +434,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${t.RESPONSABLE || '-'}</td>
                 <td>${t.CODIGO || '-'}</td>
                 <td title="${t.SERVICIO || ''}"><div class="obs-cell text-clamp">${t.SERVICIO || '-'}</div></td>
-                <td><span class="badge ${badgeClass}">${status}</span></td>
                 <td title="${causaText}"><div class="obs-cell text-clamp">${causaText}</div></td>
+                <td><span class="badge ${badgeClass}">${status}</span></td>
                 <td title="${descText}"><div class="obs-cell text-clamp">${descText}</div></td>
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>

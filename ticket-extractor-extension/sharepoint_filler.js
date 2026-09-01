@@ -2,163 +2,232 @@
 // Se inyecta en la página de SharePoint para rellenar el formulario de nueva entrada
 
 (function() {
-  // Intentar rellenar un campo por aria-label o por texto del label cercano
-  function setFieldValue(labelText, value) {
-    if (value === null || value === undefined || value === '') return false;
-    const strVal = String(value);
-
-    // 1) Buscar por aria-label directo
-    const ariaSelectors = [
-      `input[aria-label="${labelText}"]`,
-      `textarea[aria-label="${labelText}"]`,
-      `[role="textbox"][aria-label="${labelText}"]`,
-      `input[aria-label*="${labelText}"]`,
-      `textarea[aria-label*="${labelText}"]`,
-      `[role="textbox"][aria-label*="${labelText}"]`,
-    ];
-    for (const sel of ariaSelectors) {
-      const el = document.querySelector(sel);
-      if (el) {
-        reactSet(el, strVal);
-        return true;
-      }
-    }
-
-    // 2) Buscar por title en el label
-    const titleEl = document.querySelector(`[title="${labelText}"], [data-automation-id*="${labelText}"]`);
-    if (titleEl) {
-      const input = findInputNear(titleEl);
-      if (input) { reactSet(input, strVal); return true; }
-    }
-
-    // 3) Buscar por texto de span/label
-    const allSpans = document.querySelectorAll('span, label, div[class*="label"], div[class*="Label"]');
-    for (const span of allSpans) {
-      if ((span.textContent || '').trim() === labelText) {
-        const input = findInputNear(span);
-        if (input) { reactSet(input, strVal); return true; }
-      }
-    }
-
-    return false;
+  function showToast(msg, ok) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:9999999;
+      background:${ok ? '#0f7b3e' : '#ef4444'};color:white;padding:14px 20px;
+      border-radius:10px;font-family:sans-serif;font-size:14px;font-weight:bold;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);max-width:340px;transition:opacity .5s;`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; }, 5000);
+    setTimeout(() => t.remove(), 5600);
   }
 
-  function findInputNear(el) {
-    let node = el;
-    for (let i = 0; i < 8 && node; i++) {
-      const input = node.querySelector(
-        'input:not([type="hidden"]):not([type="checkbox"]), textarea, [role="textbox"], [contenteditable="true"]'
-      );
-      if (input) return input;
-      node = node.parentElement;
+  const isTrulyVisible = (elem) => {
+    const rect = elem.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return false;
+    const style = window.getComputedStyle(elem);
+    if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+    return true;
+  };
+
+  function nativeSet(el, value, sendEnter = true) {
+    el.focus();
+    try {
+      const proto = el.tagName === 'TEXTAREA'
+        ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc && desc.set) desc.set.call(el, value);
+      else el.value = value;
+    } catch(e) { el.value = value; }
+    
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    if (sendEnter) {
+      el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Enter' }));
+      el.blur();
+    }
+  }
+
+  function simulateMouseClick(element) {
+    ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(ev => {
+      const EventClass = ev.startsWith('pointer') ? window.PointerEvent || window.MouseEvent : window.MouseEvent;
+      element.dispatchEvent(new EventClass(ev, {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        buttons: 1
+      }));
+    });
+    try { element.click(); } catch(e) {}
+  }
+
+  function findFieldElement(labelText) {
+    // 1. Buscar directamente por aria-label (ej. aria-label="IM Campo obligatorio...")
+    const selectors = [
+      `input[aria-label^="${labelText} "]`,
+      `input[aria-label^="${labelText},"]`,
+      `textarea[aria-label^="${labelText} "]`,
+      `textarea[aria-label^="${labelText},"]`,
+      `div[role="combobox"][aria-label^="${labelText} "]`,
+      `div[role="combobox"][aria-label^="${labelText},"]`,
+      `input[aria-label="${labelText}"]`,
+      `textarea[aria-label="${labelText}"]`,
+      `div[role="combobox"][aria-label="${labelText}"]`
+    ];
+
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+
+    // 2. Fallback: buscar por texto visible (TreeWalker)
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const txt = node.textContent.trim();
+      if (txt === labelText || txt === labelText + ' *' || txt === labelText + '*') {
+        let el = node.parentElement;
+        for (let i = 0; i < 8 && el; i++) {
+          if (el.querySelector('input, textarea, [role="textbox"], [placeholder="Escribe para filtrar"]')) {
+            return el;
+          }
+          el = el.parentElement;
+        }
+      }
     }
     return null;
   }
 
-  function reactSet(el, value) {
-    try {
-      const proto = el.tagName === 'TEXTAREA'
-        ? window.HTMLTextAreaElement.prototype
-        : window.HTMLInputElement.prototype;
-      const setter = Object.getOwnPropertyDescriptor(proto, 'value');
-      if (setter && setter.set) {
-        setter.set.call(el, value);
-      } else {
-        el.value = value;
+  function fillTextField(el, value) {
+    let inp = el;
+    if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && el.getAttribute('role') !== 'textbox') {
+      inp = el.querySelector('input:not([type=hidden]):not([type=checkbox]), textarea, [role="textbox"]');
+    }
+    if (!inp) return false;
+    
+    if (inp.getAttribute('contenteditable') === 'true') {
+      inp.textContent = value;
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      nativeSet(inp, value);
+    }
+    return true;
+  }
+
+  function fillChoiceField(el, value) {
+    return new Promise((resolve) => {
+      let clickable = el;
+      if (el.getAttribute('role') !== 'combobox') {
+        clickable = el.querySelector('[role="combobox"], [class*="dropdown"], [class*="Dropdown"], [class*="picker"]') || el;
       }
-    } catch(e) {
-      el.value = value;
-    }
+      
+      simulateMouseClick(clickable);
 
-    if (el.getAttribute('contenteditable') === 'true') {
-      el.textContent = value;
-    }
+      setTimeout(() => {
+        let filterInputs = Array.from(document.querySelectorAll('[placeholder="Escribe para filtrar"], input[role="searchbox"]'));
+        let filterInput = filterInputs.find(i => i.getBoundingClientRect().width > 0 && i.getBoundingClientRect().height > 0);
+        
+        if (filterInput) {
+          nativeSet(filterInput, value, false); // False para NO enviar Enter
+        }
 
-    ['input', 'change', 'blur'].forEach(evtName => {
-      el.dispatchEvent(new Event(evtName, { bubbles: true }));
+        let attempts = 0;
+        const findOptionInterval = setInterval(() => {
+          attempts++;
+          // Buscar el menú desplegable abierto y REALMENTE visible
+          const containers = Array.from(document.querySelectorAll('.ms-Callout, .sp-Callout, [role="listbox"], .ms-Layer, .ms-Dropdown-callout'));
+          const visibleContainers = containers.filter(c => isTrulyVisible(c));
+          
+          let selected = false;
+          let clicked = false;
+          
+          for (const container of visibleContainers) {
+            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+              const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const txt = removeAccents(node.textContent.trim().toLowerCase());
+              const val = removeAccents(value.trim().toLowerCase());
+              
+              if (txt === val) {
+                 let parent = node.parentElement;
+                 
+                 for (let i = 0; i < 4 && parent; i++) {
+                   const role = parent.getAttribute('role');
+                   if (role === 'option' || role === 'menuitem' || parent.tagName === 'LI' || parent.getAttribute('data-selection-index') || parent.className.includes('choiceItem')) {
+                     simulateMouseClick(parent);
+                     clicked = true;
+                     selected = true;
+                     break;
+                   }
+                   parent = parent.parentElement;
+                 }
+                 
+                 if (!clicked) {
+                   simulateMouseClick(node.parentElement);
+                   selected = true;
+                   clicked = true;
+                 }
+                 break; // Sale del while
+              }
+            }
+            if (selected) break; // Sale del for
+          }
+          
+          if (!selected) {
+             // Si no lo encontramos, intentamos hacer scroll hacia abajo en el contenedor visible
+             for (const container of visibleContainers) {
+                const scrollContainer = container.querySelector('.ms-ScrollablePane, .ms-Dropdown-items, [role="listbox"]') || container.querySelector('[data-is-scrollable="true"]') || container;
+                if (scrollContainer && typeof scrollContainer.scrollTop !== 'undefined') {
+                   scrollContainer.scrollTop += 200;
+                }
+             }
+          }
+          
+          if (selected || attempts >= 10) {
+            clearInterval(findOptionInterval);
+            if (!selected) {
+               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            }
+            setTimeout(() => resolve(selected), 300);
+          }
+        }, 300); // Poll every 300ms, up to 10 times
+      }, 500); 
     });
   }
 
-  function showToast(msg, ok) {
-    const toast = document.createElement('div');
-    toast.textContent = msg;
-    toast.style.cssText = `
-      position:fixed;bottom:20px;right:20px;z-index:9999999;
-      background:${ok ? '#0f7b3e' : '#ef4444'};
-      color:white;padding:14px 20px;border-radius:10px;
-      font-family:sans-serif;font-size:14px;font-weight:bold;
-      box-shadow:0 4px 12px rgba(0,0,0,.35);max-width:340px;
-      transition:opacity .5s;
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; }, 5000);
-    setTimeout(() => toast.remove(), 5500);
-  }
-
-  function doFill(data) {
-    // RE siempre vacío según lo acordado
-    // IM recibe el número de ticket (sea IM o RF)
+  async function fillSharePointForm(data) {
     const mappings = [
-      { label: 'RE',                   value: '' },
-      { label: 'IM',                   value: data.TICKET || '' },
-      { label: 'Responsable',          value: data.RESPONSABLE || '' },
-      { label: 'Codigo',               value: data.CODIGO || '' },
-      { label: 'Servicio',             value: data.SERVICIO || '' },
-      { label: 'Causa',                value: data.CAUSA || '' },
-      { label: 'Estado',               value: data.ESTADO || '' },
-      { label: 'Observacion',          value: data.DESCRIPCION || '' },
-      { label: 'Cierre',               value: data.CIERRE || '' },
-      { label: 'Creacion Ticket',      value: data['CREACION TICKET'] || '' },
-      { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '' },
-      { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || '' },
-      { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || '' },
-      { label: 'Down time claro',      value: data['DOWN TIME CLARO'] ? String(data['DOWN TIME CLARO']) : '' },
-      { label: 'Down Time Davivienda', value: data['DOWN TIME DAVIVIENDA'] ? String(data['DOWN TIME DAVIVIENDA']) : '' },
-      { label: 'Down Time Total',      value: data['DOWN TIME TOTAL'] ? String(data['DOWN TIME TOTAL']) : '' },
-      { label: 'Operacion',            value: data.OPERACION || '' },
-      { label: 'FM',                   value: '' },
+      { label: 'RE',                   value: '',                                         type: 'text' },
+      { label: 'IM',                   value: data.TICKET || '',                           type: 'text' },
+      { label: 'Codigo',               value: data.CODIGO || '',                           type: 'text' },
+      { label: 'Servicio',             value: data.SERVICIO || '',                         type: 'text' },
+      { label: 'Responsable',          value: data.RESPONSABLE || '',                      type: 'choice' },
+      { label: 'Operacion',            value: data.OPERACION || '',                        type: 'choice' },
+      { label: 'Causa',                value: data.CAUSA || '',                            type: 'choice' },
+      { label: 'Estado',               value: data.ESTADO || '',                           type: 'choice' },
+      { label: 'Observacion',          value: data.DESCRIPCION || '',                      type: 'text' },
+      { label: 'Cierre',               value: data.CIERRE || '',                           type: 'text' },
+      { label: 'Creacion Ticket',      value: data['CREACION TICKET'] || '',               type: 'text' },
+      { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '',                 type: 'choice' },
+      { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || '',                 type: 'text' },
+      { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || 'NO',               type: 'choice' },
+      { label: 'Down time claro',      value: data['DOWN TIME CLARO'] ? String(data['DOWN TIME CLARO']) : '', type: 'text' },
+      { label: 'Down Time Davivienda', value: data['DOWN TIME DAVIVIENDA'] ? String(data['DOWN TIME DAVIVIENDA']) : '', type: 'text' },
+      { label: 'Down Time Total',      value: data['DOWN TIME TOTAL'] ? String(data['DOWN TIME TOTAL']) : '', type: 'text' },
+      { label: 'FM',                   value: '',                                          type: 'text' }
     ];
 
     let filled = 0;
-    for (const { label, value } of mappings) {
-      if (setFieldValue(label, value)) filled++;
+    for (const { label, value, type } of mappings) {
+      if (!value) continue;
+      const targetEl = findFieldElement(label);
+      if (!targetEl) continue;
+
+      let ok = false;
+      if (type === 'choice') {
+        ok = await fillChoiceField(targetEl, value);
+      } else {
+        ok = fillTextField(targetEl, value);
+      }
+      if (ok) filled++;
     }
     return filled;
   }
 
-  // Usar MutationObserver para esperar que el formulario esté listo
-  function waitAndFill(data) {
-    let attempts = 0;
-    const maxAttempts = 30;
-
-    const tryFill = () => {
-      attempts++;
-      // Detectar si hay campos de formulario en pantalla
-      const inputs = document.querySelectorAll(
-        'input[aria-label], textarea[aria-label], [role="textbox"], [contenteditable="true"]'
-      );
-
-      if (inputs.length >= 2) {
-        const filled = doFill(data);
-        if (filled > 0) {
-          showToast(`✅ ${filled} campos rellenados. Revisa y haz clic en Guardar.`, true);
-        } else {
-          showToast('⚠️ No se pudieron rellenar los campos. Los nombres pueden ser distintos.', false);
-        }
-        return;
-      }
-
-      if (attempts < maxAttempts) {
-        setTimeout(tryFill, 500);
-      } else {
-        showToast('⚠️ El formulario tardó demasiado en cargar. Rellena manualmente.', false);
-      }
-    };
-
-    setTimeout(tryFill, 1500); // Primer intento luego de 1.5s
-  }
-
-  // Cargar datos y arrancar
   if (typeof chrome !== 'undefined' && chrome.storage) {
     chrome.storage.local.get(['lastExtractedTicket'], (result) => {
       const data = result.lastExtractedTicket;
@@ -166,7 +235,24 @@
         showToast('⚠️ No hay datos de ticket. Primero extrae un ticket desde el portal.', false);
         return;
       }
-      waitAndFill(data);
+      
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        const inputs = document.querySelectorAll(
+          'input[aria-label], textarea[aria-label], [role="textbox"], [placeholder="Escribe para filtrar"]'
+        );
+        if (inputs.length >= 1 || attempts >= 25) {
+          clearInterval(interval);
+          const filled = await fillSharePointForm(data);
+          showToast(
+            filled > 0
+              ? `✅ ${filled} campos rellenados. Revisa y haz clic en Guardar.`
+              : '⚠️ No se pudieron rellenar campos. Los nombres de columnas pueden ser distintos.',
+            filled > 0
+          );
+        }
+      }, 700);
     });
   }
 })();
