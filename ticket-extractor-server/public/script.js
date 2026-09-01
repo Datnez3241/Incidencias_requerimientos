@@ -440,7 +440,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>
                 <td>${t.INDISPONIBILIDAD || '-'}</td>
-                <td>${(() => { const sv = (t['SUBIDA SOLAR']||'').trim(); if (!sv || sv.toUpperCase() === 'NO' || sv === '') return ''; const d = new Date(sv); return isNaN(d.getTime()) ? sv : d.toLocaleDateString('es-CO', {day:'2-digit', month:'2-digit', year:'2-digit'}); })()}</td>
+                <td>${(() => { 
+                    const sv = (t['SUBIDA SOLAR']||'').trim(); 
+                    if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') return ''; 
+                    // Handle YYYY-MM-DD from date input without timezone offset
+                    const isoMatch = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(2)}`;
+                    const d = new Date(sv); 
+                    return isNaN(d.getTime()) ? sv : d.toLocaleDateString('es-CO', {day:'2-digit', month:'2-digit', year:'2-digit'}); 
+                })()}</td>
                 <td class="td-toggle">
                     <span class="btn-toggle ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
                           data-id="${t.id}" data-field="FUERZA MAYOR" data-value="${t['FUERZA MAYOR']||'NO'}">
