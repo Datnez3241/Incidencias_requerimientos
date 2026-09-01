@@ -212,22 +212,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Botones de acción
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 20px;';
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;';
 
     const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = '✅ Confirmar y Enviar';
+    confirmBtn.textContent = '✅ Confirmar y Enviar Automático';
     confirmBtn.style.cssText = `
-      flex: 1; background: #0f7b3e; color: white; border: none;
+      flex: 1; min-width: 150px; background: #0f7b3e; color: white; border: none;
       padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
       transition: background 0.2s;
     `;
     confirmBtn.onmouseover = () => confirmBtn.style.background = '#0a5c2d';
     confirmBtn.onmouseout = () => confirmBtn.style.background = '#0f7b3e';
 
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 Copiar Fila (Cuadrícula)';
+    copyBtn.style.cssText = `
+      flex: 1; min-width: 150px; background: #3b82f6; color: white; border: none;
+      padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
+      transition: background 0.2s;
+    `;
+    copyBtn.onmouseover = () => copyBtn.style.background = '#2563eb';
+    copyBtn.onmouseout = () => copyBtn.style.background = '#3b82f6';
+
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = '❌ Cancelar';
     cancelBtn.style.cssText = `
-      flex: 1; background: #ef4444; color: white; border: none;
+      flex: 1; min-width: 100px; background: #ef4444; color: white; border: none;
       padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
       transition: background 0.2s;
     `;
@@ -235,8 +245,46 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.onmouseout = () => cancelBtn.style.background = '#ef4444';
 
     buttonContainer.appendChild(confirmBtn);
+    buttonContainer.appendChild(copyBtn);
     buttonContainer.appendChild(cancelBtn);
     modalContent.appendChild(buttonContainer);
+
+    // Evento de copia a portapapeles
+    copyBtn.onclick = () => {
+      // Orden exacto de columnas de SharePoint según los mappings del script
+      const cols = [
+        '', // RE
+        data.TICKET || '', // IM
+        data.CODIGO || '',
+        data.SERVICIO || '',
+        data.RESPONSABLE || '',
+        data.OPERACION || '',
+        data.CAUSA || '',
+        data.ESTADO || '',
+        data.DESCRIPCION || '', // Observacion
+        data.CIERRE || '',
+        data['CREACION TICKET'] || '',
+        data.INDISPONIBILIDAD || '',
+        data['SUBIDA SOLAR'] || '',
+        data['FUERZA MAYOR'] || 'NO',
+        data['DOWN TIME CLARO'] || '',
+        data['DOWN TIME DAVIVIENDA'] || '',
+        data['DOWN TIME TOTAL'] || '',
+        '' // FM
+      ];
+      // Para pegar en cuadrícula, separamos por tabs (\t) y quitamos saltos de línea para evitar que salte de fila
+      const rowString = cols.map(c => String(c).replace(/\r?\n/g, '  ')).join('\t');
+
+      navigator.clipboard.writeText(rowString).then(() => {
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = '¡Copiado!';
+        copyBtn.style.background = '#10b981';
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+          copyBtn.style.background = '#3b82f6';
+        }, 2000);
+      });
+    };
 
     previewModal.appendChild(modalContent);
     document.body.appendChild(previewModal);
