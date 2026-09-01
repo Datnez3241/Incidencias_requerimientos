@@ -17,7 +17,8 @@ const isTrulyVisible = (elem) => {
       return false;
   }
   
-  const style = window.getComputedStyle(elem);
+  const ownerWin = elem.ownerDocument.defaultView || window;
+  const style = ownerWin.getComputedStyle(elem);
   if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
       if (isDebug) console.log("[DEBUG] Falló por CSS oculto (display/visibility)", style.display, style.visibility);
       return false;
@@ -27,10 +28,10 @@ const isTrulyVisible = (elem) => {
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     
-    if (x >= 0 && x <= (window.innerWidth || document.documentElement.clientWidth) &&
-        y >= 0 && y <= (window.innerHeight || document.documentElement.clientHeight)) {
+    if (x >= 0 && x <= (ownerWin.innerWidth || elem.ownerDocument.documentElement.clientWidth) &&
+        y >= 0 && y <= (ownerWin.innerHeight || elem.ownerDocument.documentElement.clientHeight)) {
         
-        const elementsAtPoint = document.elementsFromPoint(x, y);
+        const elementsAtPoint = elem.ownerDocument.elementsFromPoint(x, y);
         if (!elementsAtPoint || elementsAtPoint.length === 0) {
             if (isDebug) console.log("[DEBUG] Falló porque elementsFromPoint está vacío en", x, y);
             return false;
@@ -45,7 +46,7 @@ const isTrulyVisible = (elem) => {
         }
         return isIncluded;
     } else {
-        if (isDebug) console.log("[DEBUG] Falló por coordenadas fuera de ventana", x, y, window.innerWidth, window.innerHeight);
+        if (isDebug) console.log("[DEBUG] Falló por coordenadas fuera de ventana", x, y, ownerWin.innerWidth, ownerWin.innerHeight);
     }
   } catch (e) {
       if (isDebug) console.log("[DEBUG] Error al procesar elementsFromPoint", e);
