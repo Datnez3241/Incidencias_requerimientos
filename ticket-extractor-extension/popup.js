@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
               statusDiv.textContent = 'Error al inyectar: ' + err.message;
               statusDiv.style.color = 'red';
             });
-          }, 2000); // Dar tiempo extra para que SharePoint cargue sus controles
+          }, 4000); // Dar tiempo extra para que SharePoint cargue sus controles React/SPFx
         }
       });
     });
