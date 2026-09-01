@@ -392,13 +392,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // 1. Interceptar clics en botones "Guardar" (En cualquier iframe)
 document.addEventListener('mousedown', (e) => {
-    let btn = e.target.closest('button');
-    if (btn) {
-        let label = btn.getAttribute('aria-label') || '';
-        let text = btn.textContent.trim();
-        if (label.startsWith('Guardar') || text === 'Guardar' || text === 'Guardar y salir') {
+    let el = e.target;
+    while (el && el !== document && el.nodeType === 1) {
+        let label = (el.getAttribute('aria-label') || el.getAttribute('title') || '').toLowerCase();
+        let text = (el.innerText || el.textContent || '').trim().toLowerCase();
+        let val = (el.value || '').trim().toLowerCase();
+        
+        if (
+            label.includes('guardar') || 
+            text === 'guardar' || text === 'guardar y salir' ||
+            val === 'guardar' || val === 'guardar y salir'
+        ) {
             chrome.runtime.sendMessage({ action: "triggerSave" });
+            break;
         }
+        el = el.parentNode;
     }
 }, true);
 
