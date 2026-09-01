@@ -465,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td title="${descText}"><div class="obs-cell text-clamp">${descText}</div></td>
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>
-                <td>${t.INDISPONIBILIDAD || '-'}</td>
+                <td>${(() => { const iv = (t.INDISPONIBILIDAD||'').trim(); return (!iv || iv === 'PENDIENTE' || iv === 'NO') ? '' : iv; })()}</td>
                 <td>${(() => { 
                     const sv = (t['SUBIDA SOLAR']||'').trim(); 
                     if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') return ''; 

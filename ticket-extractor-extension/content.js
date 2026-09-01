@@ -415,9 +415,9 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
     "DESCRIPCION": actualizacion,
     "CIERRE": cierre || "PENDIENTE",
     "CREACION TICKET": creacion || "",
-    "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "PENDIENTE"),
+    "INDISPONIBILIDAD": isRF ? "" : (finInterrupcion || ""),
     "SUBIDA SOLAR": subidaSolarDate || "",
-    "FUERZA MAYOR": "NO",
+    "FUERZA MAYOR": "No",
     "DOWN TIME CLARO": dtClaro,
     "DOWN TIME DAVIVIENDA": dtDavi,
     "DOWN TIME TOTAL": downtimeTotal
