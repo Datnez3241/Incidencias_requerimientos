@@ -440,12 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>
                 <td>${t.INDISPONIBILIDAD || '-'}</td>
-                <td class="td-toggle">
-                    <span class="btn-toggle ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
-                          data-id="${t.id}" data-field="SUBIDA SOLAR" data-value="${t['SUBIDA SOLAR']||'NO'}">
-                        ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'Si':'No'}
-                    </span>
-                </td>
+                <td>${(() => { const sv = (t['SUBIDA SOLAR']||'').trim(); if (!sv || sv.toUpperCase() === 'NO' || sv === '') return ''; const d = new Date(sv); return isNaN(d.getTime()) ? sv : d.toLocaleDateString('es-CO', {day:'2-digit', month:'2-digit', year:'2-digit'}); })()}</td>
                 <td class="td-toggle">
                     <span class="btn-toggle ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
                           data-id="${t.id}" data-field="FUERZA MAYOR" data-value="${t['FUERZA MAYOR']||'NO'}">
