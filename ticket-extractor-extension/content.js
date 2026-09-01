@@ -5,12 +5,23 @@ window.ticketExtractorInjected = true;
 // =========================================================================
 
 const isTrulyVisible = (elem) => {
+  const isDebug = elem.id === 'X40Readonly' || elem.id === 'X40' || elem.getAttribute('name') === 'instance/logical.name' || elem.getAttribute('alias') === 'instance/logical.name';
+  
   const rect = elem.getBoundingClientRect();
-  if (rect.width === 0 && rect.height === 0) return false;
-  if (rect.right < 0 || rect.bottom < 0) return false;
+  if (rect.width === 0 && rect.height === 0) {
+      if (isDebug) console.log("[DEBUG] Falló por width/height = 0", elem);
+      return false;
+  }
+  if (rect.right < 0 || rect.bottom < 0) {
+      if (isDebug) console.log("[DEBUG] Falló por estar fuera de pantalla (arriba/izquierda)", rect);
+      return false;
+  }
   
   const style = window.getComputedStyle(elem);
-  if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+  if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
+      if (isDebug) console.log("[DEBUG] Falló por CSS oculto (display/visibility)", style.display, style.visibility);
+      return false;
+  }
   
   try {
     const x = rect.left + rect.width / 2;
@@ -20,14 +31,25 @@ const isTrulyVisible = (elem) => {
         y >= 0 && y <= (window.innerHeight || document.documentElement.clientHeight)) {
         
         const elementsAtPoint = document.elementsFromPoint(x, y);
-        if (!elementsAtPoint || elementsAtPoint.length === 0) return false;
+        if (!elementsAtPoint || elementsAtPoint.length === 0) {
+            if (isDebug) console.log("[DEBUG] Falló porque elementsFromPoint está vacío en", x, y);
+            return false;
+        }
         
-        // Verificamos si el elemento está entre las primeras 10 capas visibles.
-        // Esto permite atravesar "máscaras transparentes" (Cerrado/Read-only en ExtJS) 
-        // pero rechaza los elementos de pestañas en segundo plano (que están muy enterrados).
-        return elementsAtPoint.slice(0, 10).includes(elem);
+        const isIncluded = elementsAtPoint.slice(0, 10).includes(elem);
+        if (isDebug) {
+            console.log("[DEBUG] Análisis elementsFromPoint en", x, y);
+            console.log("  - ¿Está en las primeras 10 capas?:", isIncluded);
+            console.log("  - Elemento real:", elem);
+            console.log("  - Capas detectadas:", elementsAtPoint.slice(0, 10));
+        }
+        return isIncluded;
+    } else {
+        if (isDebug) console.log("[DEBUG] Falló por coordenadas fuera de ventana", x, y, window.innerWidth, window.innerHeight);
     }
-  } catch (e) {}
+  } catch (e) {
+      if (isDebug) console.log("[DEBUG] Error al procesar elementsFromPoint", e);
+  }
 
   return true;
 };
