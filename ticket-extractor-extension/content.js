@@ -83,8 +83,8 @@ function extractDataCore(requestNote, responsableConfig) {
     let el = activeContainer ? activeContainer.querySelector(selector) : null;
     if (!el && rootDoc) el = rootDoc.querySelector(selector);
     if (!el) return "";
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return el.value.trim();
-    return el.innerText ? el.innerText.trim() : el.textContent.trim();
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return el.value || "";
+    return typeof el.innerText === 'string' ? el.innerText.trim() : (el.textContent || "").trim();
   };
 
   const getTextByLabel = (labelText) => {
@@ -102,9 +102,9 @@ function extractDataCore(requestNote, responsableConfig) {
       if (next) {
         const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
         const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
-        if (visibleInput) return visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
-        if (inputs.length > 0) return inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
-        return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? next.value.trim() : next.textContent.trim();
+        if (visibleInput) return visibleInput.value !== undefined ? visibleInput.value.trim() : (typeof visibleInput.innerText === 'string' ? visibleInput.innerText.trim() : visibleInput.textContent.trim());
+        if (inputs.length > 0) return inputs[0].value !== undefined ? inputs[0].value.trim() : (typeof inputs[0].innerText === 'string' ? inputs[0].innerText.trim() : inputs[0].textContent.trim());
+        return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? (next.value || "").trim() : (typeof next.innerText === 'string' ? next.innerText.trim() : next.textContent.trim());
       }
       return "";
     };
@@ -150,9 +150,9 @@ function extractDataCore(requestNote, responsableConfig) {
           if (next) {
             const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
             const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
-            if (visibleInput) return visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
-            if (inputs.length > 0) return inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
-            return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? next.value.trim() : next.textContent.trim();
+            if (visibleInput) return visibleInput.value !== undefined ? visibleInput.value.trim() : (typeof visibleInput.innerText === 'string' ? visibleInput.innerText.trim() : visibleInput.textContent.trim());
+            if (inputs.length > 0) return inputs[0].value !== undefined ? inputs[0].value.trim() : (typeof inputs[0].innerText === 'string' ? inputs[0].innerText.trim() : inputs[0].textContent.trim());
+            return (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? (next.value || "").trim() : (typeof next.innerText === 'string' ? next.innerText.trim() : next.textContent.trim());
           }
         }
       } catch(e) {}
