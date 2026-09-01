@@ -180,7 +180,39 @@ function extractDataCore(requestNote, responsableConfig) {
     return val;
   };
 
-  let codigo = getValue('input[name="instance/number"]') || getValue('input[alias="instance/number"]') || getValue('#X17') || getAnyTextByLabel('ID de incidente:') || getAnyTextByLabel('ID de la petición:');
+  // Extraer ID del ticket con múltiples fuentes
+  let codigo = getValue('input[name="instance/number"]') 
+             || getValue('input[alias="instance/number"]') 
+             || getValue('#X17') 
+             || getAnyTextByLabel('ID de incidente:') 
+             || getAnyTextByLabel('ID de la petición:')
+             || getAnyTextByLabel('ID de incidente')
+             || getAnyTextByLabel('ID de la petición');
+
+  // Fallback 1: buscar en el encabezado visible (h1, h2, title del panel)
+  if (!codigo || codigo === 'DESCONOCIDO') {
+    const headings = rootDoc.querySelectorAll('h1, h2, h3, [class*="title"], [class*="Title"]');
+    for (const h of headings) {
+      const txt = h.textContent || '';
+      const m = txt.match(/\b(IM|RF)\d{6,}/i);
+      if (m) { codigo = m[0].toUpperCase(); break; }
+    }
+  }
+
+  // Fallback 2: buscar en la URL
+  if (!codigo || codigo === 'DESCONOCIDO') {
+    const urlMatch = (window.location.href || '').match(/\b(IM|RF)\d{6,}/i);
+    if (urlMatch) codigo = urlMatch[0].toUpperCase();
+  }
+
+  // Fallback 3: buscar en todo el texto visible de la pestaña activa
+  if (!codigo || codigo === 'DESCONOCIDO') {
+    const allText = rootDoc.body ? rootDoc.body.innerText || '' : '';
+    const m = allText.match(/\bID de incidente[:\s]+([A-Z]{2}\d{6,})/i)
+           || allText.match(/\bID de la petición[:\s]+([A-Z]{2}\d{6,})/i);
+    if (m) codigo = m[1].toUpperCase();
+  }
+
   let titulo = getValue('input[name="instance/brief.description"]') || getValue('input[alias="instance/brief.description"]') || getValue('#X13') || getAnyTextByLabel('Título:');
   let estado = getValue('input[name="instance/problem.status"]') || getValue('input[alias="instance/problem.status"]') || getValue('input[name="instance/status"]') || getValue('input[alias="instance/status"]') || getValue('#X21') || getAnyTextByLabel('Estado:');
   
