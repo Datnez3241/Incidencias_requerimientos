@@ -256,6 +256,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!t.OPERACION && t.PLATAFORMA) {
                         t.OPERACION = t.PLATAFORMA;
                     }
+                    // Normalizar FUERZA MAYOR: SI→Si, NO→No
+                    const fm = String(t['FUERZA MAYOR'] || '').trim().toUpperCase();
+                    t['FUERZA MAYOR'] = fm === 'SI' ? 'Si' : fm === 'NO' ? 'No' : (t['FUERZA MAYOR'] || '');
+                    // Normalizar SUBIDA SOLAR: YYYY-MM-DD→DD/MM/YY, SI/NO→vacío
+                    const sv = String(t['SUBIDA SOLAR'] || '').trim();
+                    if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') {
+                        t['SUBIDA SOLAR'] = '';
+                    } else {
+                        const isoMatch = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                        if (isoMatch) t['SUBIDA SOLAR'] = `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(2)}`;
+                    }
                     return t;
                 });
                 applyFilters();
