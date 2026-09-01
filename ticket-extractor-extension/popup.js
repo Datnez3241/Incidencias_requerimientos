@@ -153,8 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 // FUNCIÓN QUE SE INYECTA EN SHAREPOINT (func + args)
 // Recibe los datos del ticket directamente, sin necesitar storage
+// Maneja tanto campos de texto como menús desplegables (Choice/Lookup)
 // ============================================================
 function fillSharePointForm(data) {
+
   function showToast(msg, ok) {
     const t = document.createElement('div');
     t.textContent = msg;
@@ -178,92 +180,141 @@ function fillSharePointForm(data) {
     ['input','change','blur'].forEach(n => el.dispatchEvent(new Event(n, { bubbles: true })));
   }
 
-  function setByLabel(labelText, value) {
-    if (value === null || value === undefined || value === '') return false;
-    const val = String(value);
-
-    // Buscar inputs con aria-label
-    for (const sel of [
-      `input[aria-label="${labelText}"]`,
-      `textarea[aria-label="${labelText}"]`,
-      `[role="textbox"][aria-label="${labelText}"]`,
-      `input[aria-label*="${labelText}"]`,
-      `textarea[aria-label*="${labelText}"]`,
-    ]) {
-      const el = document.querySelector(sel);
-      if (el) { nativeSet(el, val); return true; }
-    }
-
-    // Buscar por texto exacto del label visible
+  // Encontrar el contenedor de un campo por su label visible
+  function findFieldContainer(labelText) {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
-      if (node.textContent.trim() === labelText) {
-        let parent = node.parentElement;
-        for (let i = 0; i < 8 && parent; i++) {
-          const inp = parent.querySelector(
-            'input:not([type=hidden]):not([type=checkbox]), textarea, [role=textbox], [contenteditable=true]'
-          );
-          if (inp) {
-            if (inp.contentEditable === 'true') {
-              inp.textContent = val;
-              inp.dispatchEvent(new Event('input', { bubbles: true }));
-            } else {
-              nativeSet(inp, val);
-            }
-            return true;
+      const txt = node.textContent.trim();
+      // Coincidencia exacta o sin asterisco (campo obligatorio)
+      if (txt === labelText || txt === labelText + ' *' || txt === labelText + '*') {
+        let el = node.parentElement;
+        // Subir hasta encontrar el contenedor del campo completo
+        for (let i = 0; i < 8 && el; i++) {
+          if (el.querySelector('input, textarea, [role="textbox"], [placeholder="Escribe para filtrar"]')) {
+            return el;
           }
-          parent = parent.parentElement;
+          el = el.parentElement;
         }
       }
     }
-    return false;
+    return null;
   }
 
-  function doFill() {
-    const mappings = [
-      { label: 'RE',                   value: '' },
-      { label: 'IM',                   value: data.TICKET || '' },
-      { label: 'Responsable',          value: data.RESPONSABLE || '' },
-      { label: 'Codigo',               value: data.CODIGO || '' },
-      { label: 'Servicio',             value: data.SERVICIO || '' },
-      { label: 'Causa',                value: data.CAUSA || '' },
-      { label: 'Estado',               value: data.ESTADO || '' },
-      { label: 'Observacion',          value: data.DESCRIPCION || '' },
-      { label: 'Cierre',               value: data.CIERRE || '' },
-      { label: 'Creacion Ticket',      value: data['CREACION TICKET'] || '' },
-      { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '' },
-      { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || 'NO' },
-      { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || 'NO' },
-      { label: 'Down time claro',      value: data['DOWN TIME CLARO'] ? String(data['DOWN TIME CLARO']) : '' },
-      { label: 'Down Time Davivienda', value: data['DOWN TIME DAVIVIENDA'] ? String(data['DOWN TIME DAVIVIENDA']) : '' },
-      { label: 'Down Time Total',      value: data['DOWN TIME TOTAL'] ? String(data['DOWN TIME TOTAL']) : '' },
-      { label: 'Operacion',            value: data.OPERACION || '' },
-      { label: 'FM',                   value: '' },
-    ];
+  // Rellenar campo de TEXTO simple
+  function fillTextField(container, value) {
+    const inp = container.querySelector(
+      'input:not([type=hidden]):not([type=checkbox]), textarea, [role="textbox"]'
+    );
+    if (!inp) return false;
+    if (inp.getAttribute('contenteditable') === 'true') {
+      inp.textContent = value;
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      nativeSet(inp, value);
+    }
+    return true;
+  }
+
+  // Rellenar campo DESPLEGABLE (Choice/Lookup) - tipo "Escribe para filtrar"
+  function fillChoiceField(container, value) {
+    return new Promise((resolve) => {
+      // Buscar el input de filtro o el contenedor clickeable
+      let filterInput = container.querySelector('[placeholder="Escribe para filtrar"]');
+
+      const trySelect = () => {
+        filterInput = container.querySelector('[placeholder="Escribe para filtrar"]');
+        if (!filterInput) { resolve(false); return; }
+
+        nativeSet(filterInput, value);
+
+        // Esperar a que aparezcan las opciones filtradas
+        setTimeout(() => {
+          // Buscar la opción que coincida (chip/span con ese texto)
+          const allOptions = document.querySelectorAll(
+            '[role="option"], [class*="itemCell"], [class*="choiceItem"], span[title]'
+          );
+          for (const opt of allOptions) {
+            const optText = (opt.textContent || opt.getAttribute('title') || '').trim();
+            if (optText.toLowerCase() === value.toLowerCase() || optText.toLowerCase().includes(value.toLowerCase())) {
+              opt.click();
+              resolve(true);
+              return;
+            }
+          }
+          // Si no se encontró opción exacta, al menos el valor quedó en el filtro
+          resolve(true);
+        }, 600);
+      };
+
+      if (filterInput) {
+        trySelect();
+      } else {
+        // Hacer clic en el campo para abrirlo
+        const clickable = container.querySelector('[role="combobox"], [class*="dropdown"], [class*="Dropdown"], [class*="picker"]')
+          || container;
+        clickable.click();
+        setTimeout(trySelect, 500);
+      }
+    });
+  }
+
+  // Mapeo: label → valor, tipo (text | choice)
+  const mappings = [
+    { label: 'RE',                   value: '',                                         type: 'text'   },
+    { label: 'IM',                   value: data.TICKET || '',                           type: 'text'   },
+    { label: 'Responsable',          value: data.RESPONSABLE || '',                      type: 'choice' },
+    { label: 'Codigo',               value: data.CODIGO || '',                           type: 'text'   },
+    { label: 'Servicio',             value: data.SERVICIO || '',                         type: 'text'   },
+    { label: 'Causa',                value: data.CAUSA || '',                            type: 'choice' },
+    { label: 'Estado',               value: data.ESTADO || '',                           type: 'choice' },
+    { label: 'Observacion',          value: data.DESCRIPCION || '',                      type: 'text'   },
+    { label: 'Cierre',               value: data.CIERRE || '',                           type: 'text'   },
+    { label: 'Creacion Ticket',      value: data['CREACION TICKET'] || '',               type: 'text'   },
+    { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '',                 type: 'choice' },
+    { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || 'NO',               type: 'choice' },
+    { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || 'NO',               type: 'choice' },
+    { label: 'Down time claro',      value: data['DOWN TIME CLARO'] ? String(data['DOWN TIME CLARO']) : '', type: 'text' },
+    { label: 'Down Time Davivienda', value: data['DOWN TIME DAVIVIENDA'] ? String(data['DOWN TIME DAVIVIENDA']) : '', type: 'text' },
+    { label: 'Down Time Total',      value: data['DOWN TIME TOTAL'] ? String(data['DOWN TIME TOTAL']) : '', type: 'text' },
+    { label: 'Operacion',            value: data.OPERACION || '',                        type: 'choice' },
+    { label: 'FM',                   value: '',                                          type: 'text'   },
+  ];
+
+  async function doFill() {
     let filled = 0;
-    for (const { label, value } of mappings) {
-      if (setByLabel(label, value)) filled++;
+    for (const { label, value, type } of mappings) {
+      if (!value) continue;
+      const container = findFieldContainer(label);
+      if (!container) continue;
+
+      let ok = false;
+      if (type === 'choice') {
+        ok = await fillChoiceField(container, value);
+      } else {
+        ok = fillTextField(container, value);
+      }
+      if (ok) filled++;
     }
     return filled;
   }
 
-  // Polling: intentar cada 600ms hasta que haya campos disponibles
+  // Polling: esperar que el formulario cargue
   let attempts = 0;
-  const interval = setInterval(() => {
+  const interval = setInterval(async () => {
     attempts++;
     const inputs = document.querySelectorAll(
-      'input[aria-label], textarea[aria-label], [role="textbox"]'
+      'input[aria-label], textarea[aria-label], [role="textbox"], [placeholder="Escribe para filtrar"]'
     );
-    if (inputs.length >= 2 || attempts >= 25) {
+    if (inputs.length >= 1 || attempts >= 25) {
       clearInterval(interval);
-      const filled = doFill();
+      const filled = await doFill();
       showToast(
         filled > 0
           ? `✅ ${filled} campos rellenados. Revisa y haz clic en Guardar.`
-          : '⚠️ No se pudieron rellenar campos. Verifica los nombres de columnas.',
+          : '⚠️ No se pudieron rellenar campos. Los nombres de columnas pueden ser distintos.',
         filled > 0
       );
     }
-  }, 600);
+  }, 700);
 }
