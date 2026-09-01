@@ -54,39 +54,6 @@ const isTrulyVisible = (elem) => {
   return true;
 };
 
-const getActiveContainer = (doc) => {
-  let ticketElements = Array.from(doc.querySelectorAll('input[name="instance/number"], input[alias="instance/number"], #X17, #X18, #X13'));
-  
-  if (ticketElements.length === 0) {
-      let labels = Array.from(doc.querySelectorAll('label, span, div')).filter(el => {
-        const text = el.textContent.trim();
-        return text === 'ID de incidente:' || text === 'ID de la petición:' || text === 'ID de incidente' || text === 'ID de la petición';
-      });
-      ticketElements = labels;
-  }
-
-  let activeEl = ticketElements.find(e => isTrulyVisible(e));
-  if (activeEl) {
-    const form = activeEl.closest('form');
-    if (form) return form;
-    const panel = activeEl.closest('.x-panel-body, .x-panel, body');
-    if (panel) return panel;
-    return doc;
-  }
-  
-  const frames = doc.querySelectorAll('iframe, frame');
-  for (let frame of frames) {
-    if (!isTrulyVisible(frame)) continue;
-    try {
-      if (frame.contentDocument) {
-        const container = getActiveContainer(frame.contentDocument);
-        if (container) return container;
-      }
-    } catch(e) {}
-  }
-  return null;
-};
-
 const cleanText = (str) => {
   if (!str) return "";
   return str
@@ -112,126 +79,89 @@ function formatFecha(date) {
 // =========================================================================
 
 function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
-  let rootDoc = document;
-  try {
-      if (window.top && window.top.document) {
-          rootDoc = window.top.document;
-      }
-  } catch(e) {} // Ignorar errores de CORS (cross-origin)
-  
-  const activeContainer = getActiveContainer(rootDoc) || rootDoc;
-
-  // ── PASO CLAVE: Encontrar el documento exacto que contiene el ticket VISIBLE activo ──
-  // Busca en rootDoc y en todos sus iframes el input[name="instance/number"] que sea
-  // visible en pantalla. Ese documento es la fuente única de verdad para la extracción.
-  const findActiveTicketDoc = () => {
-    // Función auxiliar: recorre doc + sus iframes recursivamente
-    const searchDoc = (doc) => {
+  // Buscar recursivamente en el documento principal y todos los iframes visibles
+  const querySelectorAllVisible = (selector) => {
+    let results = [];
+    const searchDoc = (d) => {
       try {
-        const inputs = doc.querySelectorAll('input[name="instance/number"], input[alias="instance/number"], #X18');
-        for (const inp of inputs) {
-          try {
-            if (isTrulyVisible(inp) && /^(IM|RF)\d+/i.test(inp.value || '')) {
-              return doc; // Este documento tiene el ticket activo visible
-            }
-          } catch(e) {}
+        const els = d.querySelectorAll(selector);
+        for (let el of els) {
+          if (isTrulyVisible(el)) results.push(el);
         }
-        // No encontrado aquí, revisar iframes hijos
-        const frames = doc.querySelectorAll('iframe, frame');
-        for (const frame of frames) {
+        const frames = d.querySelectorAll('iframe, frame');
+        for (let frame of frames) {
+          if (!isTrulyVisible(frame)) continue;
           try {
-            if (frame.contentDocument) {
-              const found = searchDoc(frame.contentDocument);
-              if (found) return found;
-            }
+            if (frame.contentDocument) searchDoc(frame.contentDocument);
           } catch(e) {}
         }
       } catch(e) {}
-      return null;
     };
-    return searchDoc(rootDoc) || rootDoc;
+    searchDoc(document);
+    return results;
   };
 
-  // Documento autoritativo: solo de aquí extraemos los datos
-  const ticketDoc = findActiveTicketDoc();
-
-  const getValue = (selector) => {
+  function getValue(selector) {
     const extractText = (el) => {
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
       let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
       if (text && text.includes('hpsm.widgets')) text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
       return text;
     };
-
-    // 1. activeContainer (solo visibles)
-    try {
-      const els = activeContainer.querySelectorAll(selector);
-      for (let el of els) {
-        if (isTrulyVisible(el)) {
-          let text = extractText(el);
-          if (text) return text;
-        }
-      }
-    } catch(e) {}
     
-    // 2. ticketDoc (solo visibles)
-    try {
-      const els = ticketDoc.querySelectorAll(selector);
-      for (let el of els) {
-        if (isTrulyVisible(el)) {
-          let text = extractText(el);
-          if (text) return text;
-        }
-      }
-    } catch(e) {}
-
-    // 3. Fallback rootDoc (original behaviour)
-    try {
-      const el = rootDoc.querySelector(selector);
-      if (el) {
+    const visibleEls = querySelectorAllVisible(selector);
+    for (let el of visibleEls) {
         let text = extractText(el);
         if (text) return text;
-      }
-    } catch(e) {}
-    
+    }
     return "";
-  };
+  }
 
 
   const getTextByLabel = (labelText) => {
-    const searchInContainer = (container) => {
-      if (!container) return "";
-      let elements = Array.from(container.querySelectorAll('label, div, span, td, a'));
-      let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0 && isTrulyVisible(el));
-      if (!labelEl) return "";
-      
-      let next = labelEl.nextElementSibling;
-      if (!next && labelEl.parentElement) {
-          next = labelEl.parentElement.nextElementSibling;
-      }
-      
-      if (next) {
-        const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
-        const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
-        if (visibleInput) {
-            let val = visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
-            return val.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+    let result = "";
+    const searchDoc = (d) => {
+      try {
+        let elements = Array.from(d.querySelectorAll('label, div, span, td, a'));
+        let labelEl = elements.find(el => el.textContent.trim().startsWith(labelText) && el.children.length === 0 && isTrulyVisible(el));
+        
+        if (labelEl) {
+          let next = labelEl.nextElementSibling;
+          if (!next && labelEl.parentElement) {
+              next = labelEl.parentElement.nextElementSibling;
+          }
+          if (next) {
+            const inputs = Array.from(next.querySelectorAll('input, textarea, div'));
+            const visibleInput = inputs.find(i => i.type !== 'hidden' && isTrulyVisible(i));
+            if (visibleInput) {
+                let val = visibleInput.value ? visibleInput.value.trim() : visibleInput.textContent.trim();
+                result = val.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+                return;
+            }
+            if (inputs.length > 0) {
+                let val = inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
+                result = val.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+                return;
+            }
+            let nextVal = (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? (next.value || "").trim() : next.textContent.trim();
+            result = nextVal.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+            return;
+          }
         }
-        if (inputs.length > 0) {
-            let val = inputs[0].value ? inputs[0].value.trim() : inputs[0].textContent.trim();
-            return val.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+        
+        if (result) return;
+        
+        const frames = d.querySelectorAll('iframe, frame');
+        for (let frame of frames) {
+          if (!isTrulyVisible(frame)) continue;
+          try {
+            if (frame.contentDocument) searchDoc(frame.contentDocument);
+          } catch(e) {}
         }
-        let nextVal = (next.tagName === 'INPUT' || next.tagName === 'TEXTAREA') ? (next.value || "").trim() : next.textContent.trim();
-        return nextVal.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
-      }
-      return "";
+      } catch(e) {}
     };
-
-    let res = searchInContainer(ticketDoc);
-    if (!res && ticketDoc !== rootDoc) {
-      res = searchInContainer(rootDoc);
-    }
-    return res;
+    searchDoc(document);
+    return result;
   };
 
   const parseSMWorkNotes = (rawText) => {
@@ -326,7 +256,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
 
   // Fallback 3: buscar en todo el texto visible de la pestaña activa
   if (!codigo || codigo === 'DESCONOCIDO') {
-    const allText = rootDoc.body ? rootDoc.body.innerText || '' : '';
+    const allText = document.body ? document.body.innerText || '' : '';
     const m = allText.match(/\bID de incidente[:\s]+([A-Z]{2}\d{6,})/i)
            || allText.match(/\bID de la petición[:\s]+([A-Z]{2}\d{6,})/i);
     if (m) codigo = m[1].toUpperCase();
