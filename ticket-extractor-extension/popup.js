@@ -2,8 +2,9 @@
 async function runExtraction(actionName) {
   const noteText = document.getElementById('updateNote').value.trim();
   const platform = document.getElementById('platformSelect').value;
+  const causa = document.getElementById('causaSelect').value;
   let responsable = document.getElementById('responsableInput').value.trim();
-  if (!responsable) responsable = "DIEGO"; // Valor por defecto seguro
+  if (!responsable) responsable = "DIEGO";
 
   const statusDiv = document.getElementById('status');
   statusDiv.textContent = actionName === 'updateTicket' ? 'Actualizando y Extrayendo...' : 'Extrayendo...';
@@ -23,6 +24,7 @@ async function runExtraction(actionName) {
           action: actionName, 
           note: noteText, 
           platform: platform,
+          causa: causa,
           responsable: responsable
       }, { frameId: 0 }, (response) => {
         if (chrome.runtime.lastError) {
@@ -69,19 +71,24 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Cargar configuración guardada
-  chrome.storage.local.get(['savedPlatform', 'savedResponsable', 'autoExtractEnabled'], (result) => {
+  chrome.storage.local.get(['savedPlatform', 'savedResponsable', 'savedCausa', 'autoExtractEnabled'], (result) => {
     if (result.savedPlatform) {
       document.getElementById('platformSelect').value = result.savedPlatform;
     }
+    if (result.savedCausa) {
+      document.getElementById('causaSelect').value = result.savedCausa;
+    }
     document.getElementById('responsableInput').value = result.savedResponsable || "DIEGO";
-    
-    // Por defecto encendido si no existe
     updateToggleUI(result.autoExtractEnabled !== undefined ? result.autoExtractEnabled : true);
   });
 
   // Guardar configuración cuando cambie
   document.getElementById('platformSelect').addEventListener('change', (e) => {
     chrome.storage.local.set({ savedPlatform: e.target.value });
+  });
+
+  document.getElementById('causaSelect').addEventListener('change', (e) => {
+    chrome.storage.local.set({ savedCausa: e.target.value });
   });
   
   document.getElementById('responsableInput').addEventListener('input', (e) => {

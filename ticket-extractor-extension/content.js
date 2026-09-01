@@ -343,6 +343,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     data.OPERACION = request.platform || "Telefonía";
+    // Si el usuario seleccionó una causa en el popup, tiene prioridad
+    if (request.causa) {
+        data.CAUSA = request.causa;
+    }
     chrome.runtime.sendMessage({ action: "uploadData", data: data }).catch(() => {});
     
     if (request.note) {
@@ -366,16 +370,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // =========================================================================
 
 function triggerBackgroundExtraction() {
-    chrome.storage.local.get(['autoExtractEnabled', 'savedPlatform', 'savedResponsable'], (result) => {
+    chrome.storage.local.get(['autoExtractEnabled', 'savedPlatform', 'savedResponsable', 'savedCausa'], (result) => {
         if (result.autoExtractEnabled === false) return;
         
         let platform = result.savedPlatform || "Telefonía";
         let responsable = result.savedResponsable || "DIEGO";
+        let savedCausa = result.savedCausa || "";
         
         // ¡Extraer INMEDIATAMENTE antes de que la página recargue o bloquee!
         let data = extractDataCore("", responsable);
         if (data && data.TICKET && (data.TICKET.startsWith('IM') || data.TICKET.startsWith('RF'))) {
             data.OPERACION = platform;
+            // Si hay causa guardada en el popup, tiene prioridad sobre la extraída
+            if (savedCausa) data.CAUSA = savedCausa;
             chrome.runtime.sendMessage({ action: "uploadData", data: data }).catch(() => {});
         } else {
             console.log("[SEGUNDO PLANO] No se detectó un ticket IM o RF válido. Extracción abortada.", data);
