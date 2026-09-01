@@ -29,7 +29,7 @@ async function uploadToServers(data) {
 
   // ── CERROJO 2: En storage (entre reinicios del SW) ──
   // Solo aplica cooldown si NO hay nota nueva — las actualizaciones con nota siempre pasan
-  const hasNote = String(data.ACTUALIZACION || data.OBSERVACION || '').trim().length > 0;
+  const hasNote = String(data.DESCRIPCION || data.ACTUALIZACION || data.OBSERVACION || '').trim().length > 0;
   const storageKey = `cooldown_${cleanTicket}`;
   
   if (!hasNote) {
@@ -115,6 +115,21 @@ async function uploadToServers(data) {
         if (oldCodigo && oldCodigo.length < 20 && (!data.CODIGO || data.CODIGO.length > 20)) {
           data.CODIGO = oldCodigo;
         }
+      } else {
+        // ES UN TICKET NUEVO
+        const newCausa = String(data.CAUSA || '').trim();
+        const newDesc = String(data.DESCRIPCION || '').trim();
+        
+        data.CAUSA = newCausa;
+        if (newDesc) {
+          data.DESCRIPCION = '[' + formatFecha(new Date()) + '] ' + newDesc;
+        } else {
+          data.DESCRIPCION = "";
+        }
+        
+        data.OBSERVACION = data.DESCRIPCION 
+          ? (data.CAUSA ? data.DESCRIPCION + '\n\n' + data.CAUSA : data.DESCRIPCION)
+          : data.CAUSA;
       }
     }
 
