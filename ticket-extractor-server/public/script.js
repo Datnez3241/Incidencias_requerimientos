@@ -152,8 +152,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const filtered = allTickets.filter(t => {
             // Search filter
-            const matchesSearch = (t.TICKET && t.TICKET.toLowerCase().includes(term)) || 
-                                  (t.CODIGO && t.CODIGO.toLowerCase().includes(term));
+            let matchesSearch = true;
+            if (term !== '') {
+                const imText = t.IM ? String(t.IM).toLowerCase() : '';
+                const codText = t.CODIGO ? String(t.CODIGO).toLowerCase() : '';
+                matchesSearch = imText.includes(term) || codText.includes(term);
+            }
             
             // Status filter
             let matchesStatus = true;
@@ -281,22 +285,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if ((!causa || causa === 'null') && (!desc || desc === 'null') && obs) {
-            const parts = obs.split(/(?:\r?\n){2,}/);
-            let descBlocks = [];
-            let causaLines = [];
+            // Intentar extraer datos basados en PLANTILLA CIERRE
+            const causaMatch = obs.match(/Causa de la falla:\s*([\s\S]*?)(?=\r?\n\s*(?:Soluci[oó]n de la falla:|Falla Atribuible a:|$))/i);
+            const solucionMatch = obs.match(/Soluci[oó]n de la falla:\s*([\s\S]*?)(?=\r?\n\s*(?:Falla Atribuible a:|Causa de la falla:|$))/i);
 
-            parts.forEach(part => {
-                const trimmed = part.trim();
-                if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
-                    descBlocks.push(trimmed);
-                } else if (trimmed && trimmed !== 'Descripción:' && trimmed !== 'Descripción') {
-                    causaLines.push(trimmed);
-                }
-            });
+            let extractedCausa = causaMatch ? causaMatch[1].trim() : '';
+            let extractedSolucion = solucionMatch ? solucionMatch[1].trim() : '';
 
-            if (descBlocks.length > 0) desc = descBlocks.join('\n\n');
-            if (causaLines.length > 0) causa = causaLines.join('\n\n');
-            if (!causa && !desc) causa = obs;
+            if (extractedCausa || extractedSolucion) {
+                causa = extractedCausa;
+                // Asignamos la "Solución" como la Descripción del ticket
+                desc = extractedSolucion; 
+            } else {
+                // Lógica original para otros formatos de bitácora
+                const parts = obs.split(/(?:\r?\n){2,}/);
+                let descBlocks = [];
+                let causaLines = [];
+
+                parts.forEach(part => {
+                    const trimmed = part.trim();
+                    if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
+                        descBlocks.push(trimmed);
+                    } else if (trimmed && trimmed !== 'Descripción:' && trimmed !== 'Descripción') {
+                        causaLines.push(trimmed);
+                    }
+                });
+
+                if (descBlocks.length > 0) desc = descBlocks.join('\n\n');
+                if (causaLines.length > 0) causa = causaLines.join('\n\n');
+                if (!causa && !desc) causa = obs;
+            }
         }
 
         if (!causa && t.SERVICIO) {
@@ -317,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const allColumns = [
-            { header: "TICKET", key: "TICKET", index: 1 },
+            { header: "IM", key: "IM", index: 1 },
             { header: "OPERACION", key: "OPERACION", index: 2 },
             { header: "RESPONSABLE", key: "RESPONSABLE", index: 3 },
             { header: "CODIGO", key: "CODIGO", index: 4 },
@@ -411,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const { causa: causaText, desc: descText } = parseDescAndAct(t);
 
             tr.innerHTML = `
-                <td><strong>${t.TICKET || '-'}</strong></td>
+                <td><strong>${t.IM || '-'}</strong></td>
                 <td>${t.OPERACION || '-'}</td>
                 <td>${t.RESPONSABLE || '-'}</td>
                 <td>${t.CODIGO || '-'}</td>
@@ -565,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const t = tickets[idx];
                 const { causa: causaVal, desc: descVal } = parseDescAndAct(t);
                 
-                document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.TICKET || 'Sin ID');
+                document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.IM || 'Sin ID');
                 
                 // --- Extraer el último registro con timestamp [DD/MM/AA HH:mm:ss] ---
                 const descText = descVal !== '-' ? descVal : '';
