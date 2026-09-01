@@ -79,19 +79,48 @@ function extractDataCore(requestNote, responsableConfig) {
   
   const activeContainer = getActiveContainer(rootDoc) || rootDoc;
 
-  const getValue = (selector) => {
-    let el = activeContainer ? activeContainer.querySelector(selector) : null;
-    if (!el && rootDoc) el = rootDoc.querySelector(selector);
-    if (!el) return "";
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
-    
-    let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
-    // Limpiar posibles scripts que se filtren al usar textContent
-    if (text && text.includes('hpsm.widgets')) {
-        text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
-    }
-    return text;
+  // Obtener todos los documentos accesibles (rootDoc + iframes)
+  const getAllDocs = () => {
+    const docs = [rootDoc];
+    try {
+      const frames = rootDoc.querySelectorAll('iframe, frame');
+      for (const frame of frames) {
+        try {
+          if (frame.contentDocument) docs.push(frame.contentDocument);
+        } catch(e) {}
+      }
+      // Buscar también en iframes anidados
+      for (const frame of frames) {
+        try {
+          const nestedFrames = frame.contentDocument && frame.contentDocument.querySelectorAll('iframe, frame');
+          if (nestedFrames) {
+            for (const nf of nestedFrames) {
+              try { if (nf.contentDocument) docs.push(nf.contentDocument); } catch(e) {}
+            }
+          }
+        } catch(e) {}
+      }
+    } catch(e) {}
+    return docs;
   };
+  const allDocs = getAllDocs();
+
+  const getValue = (selector) => {
+    // Buscar en todos los documentos accesibles
+    for (const doc of allDocs) {
+      const el = doc.querySelector(selector);
+      if (el) {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return (el.value || "").trim();
+        let text = el.innerText ? el.innerText.trim() : el.textContent.trim();
+        if (text && text.includes('hpsm.widgets')) {
+          text = text.replace(/hpsm\.widgets\.wrapWidget\([^)]*\)/g, '').trim();
+        }
+        if (text) return text;
+      }
+    }
+    return "";
+  };
+
 
   const getTextByLabel = (labelText) => {
     const searchInContainer = (container) => {
@@ -266,7 +295,10 @@ function extractDataCore(requestNote, responsableConfig) {
   let isRF = (codigo || "").toUpperCase().startsWith('RF');
   if (isRF) finInterrupcion = ""; 
 
-  let codigoReal = getValue('input[name="instance/logical.name"]') || getValue('input[alias="instance/logical.name"]');
+  let codigoReal = getValue('input[name="instance/logical.name"]') 
+                || getValue('input[alias="instance/logical.name"]')
+                || getValue('#X40Readonly')
+                || getValue('#X40');
   if (!codigoReal) {
       codigoReal = getTextByLabel('CI afectado:');
   }
