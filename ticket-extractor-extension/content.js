@@ -13,7 +13,7 @@ const isTrulyVisible = (elem) => {
 };
 
 const getActiveContainer = (doc) => {
-  let ticketElements = Array.from(doc.querySelectorAll('input[name="instance/number"], input[alias="instance/number"], #X17, #X13'));
+  let ticketElements = Array.from(doc.querySelectorAll('input[name="instance/number"], input[alias="instance/number"], #X17, #X18, #X13'));
   
   if (ticketElements.length === 0) {
       let labels = Array.from(doc.querySelectorAll('label, span, div')).filter(el => {
@@ -180,14 +180,26 @@ function extractDataCore(requestNote, responsableConfig) {
     return val;
   };
 
-  // Extraer ID del ticket con múltiples fuentes
   let codigo = getValue('input[name="instance/number"]') 
              || getValue('input[alias="instance/number"]') 
              || getValue('#X17') 
+             || getValue('#X18')
              || getAnyTextByLabel('ID de incidente:') 
              || getAnyTextByLabel('ID de la petición:')
              || getAnyTextByLabel('ID de incidente')
              || getAnyTextByLabel('ID de la petición');
+
+  // Fallback 0: buscar cualquier input visible cuyo valor empiece por IM o RF
+  if (!codigo || codigo.length < 5) {
+    const allInputs = rootDoc.querySelectorAll('input[type="text"], input:not([type])');
+    for (const inp of allInputs) {
+      const v = (inp.value || '').trim();
+      if (/^(IM|RF)\d{5,}/i.test(v) && isTrulyVisible(inp)) {
+        codigo = v.toUpperCase();
+        break;
+      }
+    }
+  }
 
   // Fallback 1: buscar en el encabezado visible (h1, h2, title del panel)
   if (!codigo || codigo === 'DESCONOCIDO') {
