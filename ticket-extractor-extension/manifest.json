@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Ticket Extractor (IM/RF)",
-  "version": "1.6",
-  "description": "Extrae datos de tickets IM/RF a un archivo Excel/CSV",
+  "version": "1.7",
+  "description": "Extrae datos de tickets IM/RF a un archivo Excel/CSV y sincroniza con SharePoint",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -20,6 +21,12 @@
       "all_frames": true,
       "match_about_blank": true,
       "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["sharepoint_filler.js"],
+      "matches": ["https://claromovilco-my.sharepoint.com/*"]
     }
   ],
   "background": {

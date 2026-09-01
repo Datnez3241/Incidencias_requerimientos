@@ -35,6 +35,12 @@ async function runExtraction(actionName) {
         if (response && response.success) {
           statusDiv.textContent = '¡Datos enviados al proceso en segundo plano!';
           statusDiv.style.color = 'blue';
+          // Guardar el último ticket extraído para SharePoint
+          if (response.data) {
+            response.data.OPERACION = platform;
+            if (causa) response.data.CAUSA = causa;
+            chrome.storage.local.set({ lastExtractedTicket: response.data });
+          }
         } else if (response && response.errorMsg) {
           statusDiv.textContent = 'Error: ' + response.errorMsg;
           statusDiv.style.color = 'red';
@@ -102,6 +108,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('extractBtn').addEventListener('click', () => {
     runExtraction('extractData');
+  });
+
+  // Botón de SharePoint
+  document.getElementById('sharepointBtn').addEventListener('click', async () => {
+    const statusDiv = document.getElementById('status');
+    const SP_NEW_FORM = 'https://claromovilco-my.sharepoint.com/personal/45110560_claro_com_co/Lists/Bitacora%202026/NewForm.aspx';
+
+    // Verificar que haya datos recientes
+    chrome.storage.local.get(['lastExtractedTicket'], async (result) => {
+      if (!result.lastExtractedTicket) {
+        statusDiv.textContent = '⚠️ Primero extrae un ticket con el botón azul.';
+        statusDiv.style.color = '#d97706';
+        return;
+      }
+
+      statusDiv.textContent = 'Abriendo SharePoint...';
+      statusDiv.style.color = '#6b7280';
+
+      // Abrir el formulario de nueva entrada
+      const tab = await chrome.tabs.create({ url: SP_NEW_FORM, active: true });
+
+      // Esperar a que cargue la página y luego inyectar el relleno automático
+      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          setTimeout(() => {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['sharepoint_filler.js']
+            }).catch(err => {
+              statusDiv.textContent = 'Error al inyectar: ' + err.message;
+              statusDiv.style.color = 'red';
+            });
+          }, 2000); // Dar tiempo extra para que SharePoint cargue sus controles
+        }
+      });
+    });
   });
 });
 
