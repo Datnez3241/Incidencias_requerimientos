@@ -481,10 +481,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     
-    if (request.note) {
-        navigator.clipboard.writeText(request.note).catch(err => console.log('Error al copiar al portapapeles: ', err));
-    }
-
+    // La copia al portapapeles ahora se maneja en popup.js para evitar errores de foco
     data.OPERACION = request.platform || "Telefonia";
     // Si el usuario seleccionó una causa en el popup, tiene prioridad
     if (request.causa) {

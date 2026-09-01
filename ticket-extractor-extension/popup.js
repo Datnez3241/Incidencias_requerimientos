@@ -11,6 +11,11 @@ async function runExtraction(actionName) {
   const statusDiv = document.getElementById('status');
   statusDiv.textContent = actionName === 'updateTicket' ? 'Actualizando y Extrayendo...' : 'Extrayendo...';
 
+  // Copiar al portapapeles desde el popup (tiene foco, no da error)
+  if (noteText) {
+      navigator.clipboard.writeText(noteText).catch(e => console.log(e));
+  }
+
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   chrome.scripting.executeScript({
