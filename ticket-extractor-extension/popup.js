@@ -193,12 +193,13 @@ document.addEventListener('DOMContentLoaded', () => {
           fieldRow.style.cssText = 'display: flex; margin-bottom: 6px; font-size: 13px;';
           
           const fieldName = document.createElement('div');
-          fieldName.textContent = field + ':';
+          const displayLabel = field === 'TICKET' ? 'IM' : field;
+          fieldName.textContent = displayLabel + ':';
           fieldName.style.cssText = 'font-weight: 600; color: #374151; width: 140px; flex-shrink: 0;';
           
           const fieldValueEl = document.createElement('div');
           fieldValueEl.textContent = fieldValue;
-          fieldValueEl.style.cssText = 'color: #6b7280; word-break: break-word;';
+          fieldValueEl.style.cssText = 'color: #6b7280; word-break: break-word; white-space: pre-wrap;';
           
           fieldRow.appendChild(fieldName);
           fieldRow.appendChild(fieldValueEl);
