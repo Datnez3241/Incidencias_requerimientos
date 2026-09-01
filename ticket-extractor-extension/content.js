@@ -12,27 +12,27 @@ const isTrulyVisible = (elem) => {
   const style = window.getComputedStyle(elem);
   if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
   
-  // En aplicaciones como HPSM/ExtJS, las pestañas ocultas a veces se apilan detrás de la activa.
-  // Verificamos si el elemento (o un contenedor cercano) es visible usando elementFromPoint
   try {
-    // Tomar un punto central del elemento
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     
-    // Asegurarse de que el punto esté dentro del viewport
     if (x >= 0 && x <= (window.innerWidth || document.documentElement.clientWidth) &&
         y >= 0 && y <= (window.innerHeight || document.documentElement.clientHeight)) {
         
         const topEl = document.elementFromPoint(x, y);
-        // Si el elemento en ese punto no es nuestro elemento ni un descendiente, probablemente está oculto detrás de otra pestaña
-        if (topEl && !elem.contains(topEl) && !topEl.contains(elem)) {
-            // Permitimos un margen de error si están en el mismo contenedor de formulario
-            const form1 = elem.closest('form');
-            const form2 = topEl.closest('form');
-            if (!form1 || form1 !== form2) {
-                return false;
-            }
+        if (!topEl) return false;
+        
+        if (elem.contains(topEl) || topEl.contains(elem)) return true;
+        
+        // Handle ExtJS read-only masks and transparent overlays
+        let current = topEl;
+        let distance = 0;
+        while (current && distance < 5) {
+            if (current.contains(elem)) return true;
+            current = current.parentElement;
+            distance++;
         }
+        return false;
     }
   } catch (e) {}
 
