@@ -69,7 +69,7 @@ function formatFecha(date) {
 // NÚCLEO DE EXTRACCIÓN
 // =========================================================================
 
-function extractDataCore(requestNote, responsableConfig) {
+function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
   let rootDoc = document;
   try {
       if (window.top && window.top.document) {
@@ -376,7 +376,7 @@ function extractDataCore(requestNote, responsableConfig) {
 
   return {
     "TICKET": codigo || "DESCONOCIDO",
-    "RESPONSABLE": responsableConfig || "DIEGO", 
+    "RESPONSABLE": responsableConfig || "DIEGO",
     "CODIGO": codigoReal,
     "SERVICIO": titulo || "SIN SERVICIO",
     "ESTADO": estado || "CERRADO",
@@ -385,7 +385,7 @@ function extractDataCore(requestNote, responsableConfig) {
     "CIERRE": cierre,
     "CREACION TICKET": creacion || "",
     "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "NO"),
-    "SUBIDA SOLAR": "NO",
+    "SUBIDA SOLAR": subidaSolarDate || "",
     "FUERZA MAYOR": "NO",
     "DOWN TIME CLARO": dtClaro,
     "DOWN TIME DAVIVIENDA": dtDavi,
@@ -427,7 +427,7 @@ function showToast(message, isError = false) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "extractData") {
-    let data = extractDataCore(request.note, request.responsable);
+    let data = extractDataCore(request.note, request.responsable, request.subidaSolarDate);
     
     console.log("[DEBUG EXTRACCIÓN] Datos capturados:", data);
     if (data.TICKET === "DESCONOCIDO") {
@@ -468,15 +468,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // =========================================================================
 
 function triggerBackgroundExtraction() {
-    chrome.storage.local.get(['autoExtractEnabled', 'savedPlatform', 'savedResponsable', 'savedCausa'], (result) => {
+    chrome.storage.local.get(['autoExtractEnabled', 'savedPlatform', 'savedResponsable', 'savedCausa', 'savedSubidaSolarDate'], (result) => {
         if (result.autoExtractEnabled === false) return;
-        
+
         let platform = result.savedPlatform || "Telefonía";
         let responsable = result.savedResponsable || "DIEGO";
         let savedCausa = result.savedCausa || "";
-        
+        let savedSubidaSolarDate = result.savedSubidaSolarDate || "";
+
         // ¡Extraer INMEDIATAMENTE antes de que la página recargue o bloquee!
-        let data = extractDataCore("", responsable);
+        let data = extractDataCore("", responsable, savedSubidaSolarDate);
         if (data && data.TICKET && (data.TICKET.startsWith('IM') || data.TICKET.startsWith('RF'))) {
             data.OPERACION = platform;
             // Si hay causa guardada en el popup, tiene prioridad sobre la extraída

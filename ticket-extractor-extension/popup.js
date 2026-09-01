@@ -3,6 +3,7 @@ async function runExtraction(actionName) {
   const noteText = document.getElementById('updateNote').value.trim();
   const platform = document.getElementById('platformSelectMain').value || document.getElementById('platformSelect').value;
   const causa = document.getElementById('causaSelect').value;
+  const subidaSolarDate = document.getElementById('subidaSolarDate').value;
   let responsable = document.getElementById('responsableInput').value.trim();
   if (!responsable) responsable = "DIEGO";
 
@@ -25,7 +26,8 @@ async function runExtraction(actionName) {
           note: noteText, 
           platform: platform,
           causa: causa,
-          responsable: responsable
+          responsable: responsable,
+          subidaSolarDate: subidaSolarDate
       }, { frameId: 0 }, (response) => {
         if (chrome.runtime.lastError) {
           statusDiv.textContent = 'Error: Refresca la página y vuelve a intentar.';
@@ -39,6 +41,7 @@ async function runExtraction(actionName) {
           if (response.data) {
             response.data.OPERACION = platform;
             if (causa) response.data.CAUSA = causa;
+            if (subidaSolarDate) response.data['SUBIDA SOLAR'] = subidaSolarDate;
             chrome.storage.local.set({ lastExtractedTicket: response.data });
           }
         } else if (response && response.errorMsg) {
@@ -77,13 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Cargar configuración guardada
-  chrome.storage.local.get(['savedPlatform', 'savedResponsable', 'savedCausa', 'autoExtractEnabled'], (result) => {
+  chrome.storage.local.get(['savedPlatform', 'savedResponsable', 'savedCausa', 'savedSubidaSolarDate', 'autoExtractEnabled'], (result) => {
     if (result.savedPlatform) {
       document.getElementById('platformSelect').value = result.savedPlatform;
       document.getElementById('platformSelectMain').value = result.savedPlatform;
     }
     if (result.savedCausa) {
       document.getElementById('causaSelect').value = result.savedCausa;
+    }
+    if (result.savedSubidaSolarDate) {
+      document.getElementById('subidaSolarDate').value = result.savedSubidaSolarDate;
     }
     document.getElementById('responsableInput').value = result.savedResponsable || "DIEGO";
     updateToggleUI(result.autoExtractEnabled !== undefined ? result.autoExtractEnabled : true);
@@ -102,6 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('causaSelect').addEventListener('change', (e) => {
     chrome.storage.local.set({ savedCausa: e.target.value });
+  });
+
+  document.getElementById('subidaSolarDate').addEventListener('change', (e) => {
+    chrome.storage.local.set({ savedSubidaSolarDate: e.target.value });
   });
   
   document.getElementById('responsableInput').addEventListener('input', (e) => {
@@ -400,7 +410,7 @@ function fillSharePointForm(data) {
     
     // === INDICADORES DE IMPACTO ===
     { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '',                 type: 'choice', category: 'impacto' },
-    { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || 'NO',               type: 'choice', category: 'impacto' },
+    { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || '',                 type: 'text',   category: 'impacto' },
     { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || 'NO',               type: 'choice', category: 'impacto' },
     
     // === TIEMPOS DE INACTIVIDAD ===
