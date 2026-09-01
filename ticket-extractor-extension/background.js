@@ -52,7 +52,7 @@ async function uploadToServers(data) {
 
     // ── PASO 1: Buscar si el ticket ya existe en Supabase ──
     const getResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,CAUSA,DESCRIPCION,CODIGO,OPERACION`,
+      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,DESCRIPCION,ACTUALIZACION,CODIGO,PLATAFORMA`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
 
@@ -63,8 +63,8 @@ async function uploadToServers(data) {
       if (rows.length > 0) {
         existingId = rows[0].id;
         const oldObs = String(rows[0].OBSERVACION || '').trim();
-        let oldCausa = String(rows[0].CAUSA || '').trim();
-        let oldDesc = String(rows[0].DESCRIPCION || '').trim();
+        let oldCausa = String(rows[0].DESCRIPCION || '').trim();
+        let oldDesc = String(rows[0].ACTUALIZACION || '').trim();
         const newCausa = String(data.CAUSA || '').trim();
         const newDesc = String(data.DESCRIPCION || '').trim();
         const oldCodigo = String(rows[0].CODIGO || '').trim();
@@ -116,6 +116,14 @@ async function uploadToServers(data) {
       : `${SUPABASE_URL}/rest/v1/tickets`;
     const method = existingId ? 'PATCH' : 'POST';
 
+    // Mapeo para Supabase (para no obligar a modificar las columnas en la DB)
+    const supabaseData = { ...data };
+    supabaseData.DESCRIPCION = data.CAUSA;
+    supabaseData.ACTUALIZACION = data.DESCRIPCION;
+    supabaseData.PLATAFORMA = data.OPERACION;
+    delete supabaseData.CAUSA;
+    delete supabaseData.OPERACION;
+
     let saveResp = await fetch(url, {
       method,
       headers: {
@@ -124,15 +132,15 @@ async function uploadToServers(data) {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(supabaseData)
     });
 
     if (!saveResp.ok && saveResp.status === 400) {
-      console.warn('[WARN] Reintentando guardar sin CAUSA/DESCRIPCION/OPERACION por si no se han creado en Supabase');
-      const fallbackData = { ...data };
-      delete fallbackData.CAUSA;
+      console.warn('[WARN] Reintentando guardar sin DESCRIPCION/ACTUALIZACION/PLATAFORMA por si no se han creado en Supabase');
+      const fallbackData = { ...supabaseData };
       delete fallbackData.DESCRIPCION;
-      delete fallbackData.OPERACION;
+      delete fallbackData.ACTUALIZACION;
+      delete fallbackData.PLATAFORMA;
       saveResp = await fetch(url, {
         method,
         headers: {
