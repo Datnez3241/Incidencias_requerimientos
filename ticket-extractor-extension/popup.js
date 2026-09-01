@@ -3,7 +3,8 @@ async function runExtraction(actionName) {
   const noteText = document.getElementById('updateNote').value.trim();
   const platform = document.getElementById('platformSelect').value;
   const causa = document.getElementById('causaSelect').value;
-  const subidaSolarDate = document.getElementById('subidaSolarDate').value;
+  const subidaSolarToggle = document.getElementById('subidaSolarToggle').checked;
+  const subidaSolarDate = subidaSolarToggle ? document.getElementById('subidaSolarDate').value : "";
   let responsable = document.getElementById('responsableInput').value.trim();
   if (!responsable) responsable = "DIEGO";
 
@@ -90,6 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.savedSubidaSolarDate) {
       document.getElementById('subidaSolarDate').value = result.savedSubidaSolarDate;
     }
+    
+    const isSolarEnabled = result.savedSubidaSolarToggle !== undefined ? result.savedSubidaSolarToggle : false;
+    document.getElementById('subidaSolarToggle').checked = isSolarEnabled;
+    document.getElementById('subidaSolarDate').disabled = !isSolarEnabled;
+    
     document.getElementById('responsableInput').value = result.savedResponsable || "DIEGO";
     updateToggleUI(result.autoExtractEnabled !== undefined ? result.autoExtractEnabled : true);
   });
@@ -107,6 +113,12 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set({ savedSubidaSolarDate: e.target.value });
   });
 
+  document.getElementById('subidaSolarToggle').addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+    document.getElementById('subidaSolarDate').disabled = !isChecked;
+    chrome.storage.local.set({ savedSubidaSolarToggle: isChecked });
+  });
+
   document.getElementById('responsableInput').addEventListener('input', (e) => {
     chrome.storage.local.set({ savedResponsable: e.target.value.trim() });
   });
@@ -119,193 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('extractBtn').addEventListener('click', () => {
     runExtraction('extractData');
   });
-
-  // Botón de SharePoint
-  document.getElementById('sharepointBtn').addEventListener('click', async () => {
-    const statusDiv = document.getElementById('status');
-    const SP_NEW_FORM = 'https://claromovilco-my.sharepoint.com/personal/45110560_claro_com_co/Lists/Bitacora%202026/NewForm.aspx';
-
-    // Verificar que haya datos recientes
-    chrome.storage.local.get(['lastExtractedTicket'], async (result) => {
-      if (!result.lastExtractedTicket) {
-        statusDiv.textContent = '⚠️ Primero extrae un ticket con el botón azul.';
-        statusDiv.style.color = '#d97706';
-        return;
-      }
-
-      // Mostrar vista previa de datos
-      showDataPreview(result.lastExtractedTicket, SP_NEW_FORM, statusDiv);
-    });
-  });
-
-  // Función para mostrar vista previa de datos
-  function showDataPreview(data, spUrl, statusDiv) {
-    // Crear modal de vista previa
-    const previewModal = document.createElement('div');
-    previewModal.style.cssText = `
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); z-index: 10000; display: flex;
-      align-items: center; justify-content: center;
-    `;
-
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-      background: white; width: 90%; max-width: 500px; max-height: 80vh;
-      border-radius: 12px; padding: 20px; overflow-y: auto;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    `;
-
-    // Título del modal
-    const title = document.createElement('h3');
-    title.textContent = '📋 Vista Previa de Datos';
-    title.style.cssText = 'margin: 0 0 15px 0; color: #111827; font-size: 18px; text-align: center;';
-    modalContent.appendChild(title);
-
-    // Organizar datos por categorías
-    const categories = {
-      'IDENTIFICACIÓN': ['TICKET', 'CODIGO', 'SERVICIO'],
-      'CLASIFICACIÓN': ['RESPONSABLE', 'OPERACION', 'CAUSA', 'ESTADO'],
-      'DETALLES': ['DESCRIPCION', 'CIERRE', 'CREACION TICKET'],
-      'IMPACTO': ['INDISPONIBILIDAD', 'SUBIDA SOLAR', 'FUERZA MAYOR'],
-      'TIEMPOS': ['DOWN TIME CLARO', 'DOWN TIME DAVIVIENDA', 'DOWN TIME TOTAL']
-    };
-
-    for (const [category, fields] of Object.entries(categories)) {
-      const categoryDiv = document.createElement('div');
-      categoryDiv.style.cssText = 'margin-bottom: 15px;';
-      
-      const categoryLabel = document.createElement('div');
-      categoryLabel.textContent = category;
-      categoryLabel.style.cssText = 'font-size: 11px; font-weight: 800; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; border-bottom: 2px solid #e5e7eb; padding-bottom: 4px;';
-      categoryDiv.appendChild(categoryLabel);
-
-      for (const field of fields) {
-        const fieldValue = data[field] || '';
-        if (fieldValue) {
-          const fieldRow = document.createElement('div');
-          fieldRow.style.cssText = 'display: flex; margin-bottom: 6px; font-size: 13px;';
-          
-          const fieldName = document.createElement('div');
-          const displayLabel = field === 'TICKET' ? 'IM' : field;
-          fieldName.textContent = displayLabel + ':';
-          fieldName.style.cssText = 'font-weight: 600; color: #374151; width: 140px; flex-shrink: 0;';
-          
-          const fieldValueEl = document.createElement('div');
-          fieldValueEl.textContent = fieldValue;
-          fieldValueEl.style.cssText = 'color: #6b7280; word-break: break-word; white-space: pre-wrap;';
-          
-          fieldRow.appendChild(fieldName);
-          fieldRow.appendChild(fieldValueEl);
-          categoryDiv.appendChild(fieldRow);
-        }
-      }
-      
-      modalContent.appendChild(categoryDiv);
-    }
-
-    // Botones de acción
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;';
-
-    const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = '✅ Confirmar y Enviar Automático';
-    confirmBtn.style.cssText = `
-      flex: 1; min-width: 150px; background: #0f7b3e; color: white; border: none;
-      padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
-      transition: background 0.2s;
-    `;
-    confirmBtn.onmouseover = () => confirmBtn.style.background = '#0a5c2d';
-    confirmBtn.onmouseout = () => confirmBtn.style.background = '#0f7b3e';
-
-    const copyBtn = document.createElement('button');
-    copyBtn.textContent = '📋 Copiar Fila (Cuadrícula)';
-    copyBtn.style.cssText = `
-      flex: 1; min-width: 150px; background: #3b82f6; color: white; border: none;
-      padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
-      transition: background 0.2s;
-    `;
-    copyBtn.onmouseover = () => copyBtn.style.background = '#2563eb';
-    copyBtn.onmouseout = () => copyBtn.style.background = '#3b82f6';
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = '❌ Cancelar';
-    cancelBtn.style.cssText = `
-      flex: 1; min-width: 100px; background: #ef4444; color: white; border: none;
-      padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
-      transition: background 0.2s;
-    `;
-    cancelBtn.onmouseover = () => cancelBtn.style.background = '#dc2626';
-    cancelBtn.onmouseout = () => cancelBtn.style.background = '#ef4444';
-
-    buttonContainer.appendChild(confirmBtn);
-    buttonContainer.appendChild(copyBtn);
-    buttonContainer.appendChild(cancelBtn);
-    modalContent.appendChild(buttonContainer);
-
-    // Evento de copia a portapapeles
-    copyBtn.onclick = () => {
-      // Orden exacto de columnas de SharePoint según los mappings del script
-      const cols = [
-        '', // RE
-        data.TICKET || '', // IM
-        data.CODIGO || '',
-        data.SERVICIO || '',
-        data.RESPONSABLE || '',
-        data.OPERACION || '',
-        data.CAUSA || '',
-        data.ESTADO || '',
-        data.DESCRIPCION || '', // Observacion
-        data.CIERRE || '',
-        data['CREACION TICKET'] || '',
-        data.INDISPONIBILIDAD || '',
-        data['SUBIDA SOLAR'] || '',
-        data['FUERZA MAYOR'] || 'NO',
-        data['DOWN TIME CLARO'] || '',
-        data['DOWN TIME DAVIVIENDA'] || '',
-        data['DOWN TIME TOTAL'] || '',
-        '' // FM
-      ];
-      // Para pegar en cuadrícula, separamos por tabs (\t) y quitamos saltos de línea para evitar que salte de fila
-      const rowString = cols.map(c => String(c).replace(/\r?\n/g, '  ')).join('\t');
-
-      navigator.clipboard.writeText(rowString).then(() => {
-        const originalText = copyBtn.textContent;
-        copyBtn.textContent = '¡Copiado!';
-        copyBtn.style.background = '#10b981';
-        setTimeout(() => {
-          copyBtn.textContent = originalText;
-          copyBtn.style.background = '#3b82f6';
-        }, 2000);
-      });
-    };
-
-    previewModal.appendChild(modalContent);
-    document.body.appendChild(previewModal);
-
-    // Evento de confirmación
-    confirmBtn.onclick = () => {
-      previewModal.remove();
-      statusDiv.textContent = 'Abriendo SharePoint...';
-      statusDiv.style.color = '#6b7280';
-
-      chrome.runtime.sendMessage({
-        action: 'openAndFillSharePoint',
-        url: spUrl
-      });
-    };
-
-    // Evento de cancelación
-    cancelBtn.onclick = () => {
-      previewModal.remove();
-    };
-
-    // Cerrar al hacer clic fuera del modal
-    previewModal.onclick = (e) => {
-      if (e.target === previewModal) {
-        previewModal.remove();
-      }
-    };
-  }
 });
 
 

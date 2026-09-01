@@ -180,12 +180,7 @@ async function uploadToServers(data) {
       });
     }
 
-    // También guardar en servidor local (Excel)
-    fetch('http://localhost:3000/append', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).catch(() => {});
+
 
   } catch (error) {
     console.error('[ERROR] Upload falló:', error);
@@ -215,20 +210,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.tabs.sendMessage(sender.tab.id, { action: 'showToastMsg', msg: 'Guardando en nube... ☁️' }, { frameId: 0 })
         .catch(e => console.log(e));
     }
-  } else if (request.action === 'openAndFillSharePoint') {
-    chrome.tabs.create({ url: request.url, active: true }, (tab) => {
-      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-        if (tabId === tab.id && info.status === 'complete') {
-          chrome.tabs.onUpdated.removeListener(listener);
-          // Retardo para dar tiempo a que React renderice los campos
-          setTimeout(() => {
-            chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files: ['sharepoint_filler.js']
-            }).catch(err => console.error("[TicketExtractor] Error inyectando sharepoint_filler", err));
-          }, 3500);
-        }
-      });
-    });
-  }
 });

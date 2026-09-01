@@ -143,8 +143,13 @@
     </div>
 
     <div>
-      <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #374151;">Subida Solar:</label>
-      <input type="date" id="subidaSolarDate" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <label style="font-size: 11px; font-weight: bold; color: #374151; margin: 0;">Subida Solar:</label>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: #4b5563;">
+          <input type="checkbox" id="subidaSolarToggle" style="margin: 0; cursor: pointer;"> Habilitar
+        </label>
+      </div>
+      <input type="date" id="subidaSolarDate" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;" disabled>
     </div>
   </div>
 
@@ -157,7 +162,6 @@
   <!-- Sección: Acciones -->
   <div style="margin-bottom: 8px;">
     <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
-    <button id="sharepointBtn" class="sharepoint-btn">📋 Enviar a SharePoint</button>
   </div>
   <div id="status"></div>
 
