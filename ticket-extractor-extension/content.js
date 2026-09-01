@@ -228,7 +228,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
 
   // Fallback 0: buscar cualquier input visible cuyo valor empiece por IM o RF
   if (!codigo || codigo.length < 5) {
-    const allInputs = rootDoc.querySelectorAll('input[type="text"], input:not([type])');
+    const allInputs = document.querySelectorAll('input[type="text"], input:not([type])');
     for (const inp of allInputs) {
       const v = (inp.value || '').trim();
       if (/^(IM|RF)\d{5,}/i.test(v) && isTrulyVisible(inp)) {
@@ -240,7 +240,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
 
   // Fallback 1: buscar en el encabezado visible (h1, h2, title del panel)
   if (!codigo || codigo === 'DESCONOCIDO') {
-    const headings = rootDoc.querySelectorAll('h1, h2, h3, [class*="title"], [class*="Title"]');
+    const headings = document.querySelectorAll('h1, h2, h3, [class*="title"], [class*="Title"]');
     for (const h of headings) {
       const txt = h.textContent || '';
       const m = txt.match(/\b(IM|RF)\d{6,}/i);
