@@ -382,7 +382,7 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
     "ESTADO": estado || "CERRADO",
     "CAUSA": descripcion,
     "DESCRIPCION": actualizacion,
-    "CIERRE": cierre,
+    "CIERRE": cierre || "PENDIENTE",
     "CREACION TICKET": creacion || "",
     "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "NO"),
     "SUBIDA SOLAR": subidaSolarDate || "",
