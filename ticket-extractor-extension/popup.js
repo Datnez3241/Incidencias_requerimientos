@@ -136,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => {
             chrome.scripting.executeScript({
               target: { tabId: tab.id },
-              files: ['sharepoint_filler.js']
+              func: fillSharePointForm,
+              args: [result.lastExtractedTicket]
             }).catch(err => {
               statusDiv.textContent = 'Error al inyectar: ' + err.message;
               statusDiv.style.color = 'red';
@@ -149,3 +150,120 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+// ============================================================
+// FUNCIÓN QUE SE INYECTA EN SHAREPOINT (func + args)
+// Recibe los datos del ticket directamente, sin necesitar storage
+// ============================================================
+function fillSharePointForm(data) {
+  function showToast(msg, ok) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:9999999;
+      background:${ok ? '#0f7b3e' : '#ef4444'};color:white;padding:14px 20px;
+      border-radius:10px;font-family:sans-serif;font-size:14px;font-weight:bold;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);max-width:340px;transition:opacity .5s;`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; }, 5000);
+    setTimeout(() => t.remove(), 5600);
+  }
+
+  function nativeSet(el, value) {
+    try {
+      const proto = el.tagName === 'TEXTAREA'
+        ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc && desc.set) desc.set.call(el, value);
+      else el.value = value;
+    } catch(e) { el.value = value; }
+    ['input','change','blur'].forEach(n => el.dispatchEvent(new Event(n, { bubbles: true })));
+  }
+
+  function setByLabel(labelText, value) {
+    if (value === null || value === undefined || value === '') return false;
+    const val = String(value);
+
+    // Buscar inputs con aria-label
+    for (const sel of [
+      `input[aria-label="${labelText}"]`,
+      `textarea[aria-label="${labelText}"]`,
+      `[role="textbox"][aria-label="${labelText}"]`,
+      `input[aria-label*="${labelText}"]`,
+      `textarea[aria-label*="${labelText}"]`,
+    ]) {
+      const el = document.querySelector(sel);
+      if (el) { nativeSet(el, val); return true; }
+    }
+
+    // Buscar por texto exacto del label visible
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.textContent.trim() === labelText) {
+        let parent = node.parentElement;
+        for (let i = 0; i < 8 && parent; i++) {
+          const inp = parent.querySelector(
+            'input:not([type=hidden]):not([type=checkbox]), textarea, [role=textbox], [contenteditable=true]'
+          );
+          if (inp) {
+            if (inp.contentEditable === 'true') {
+              inp.textContent = val;
+              inp.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+              nativeSet(inp, val);
+            }
+            return true;
+          }
+          parent = parent.parentElement;
+        }
+      }
+    }
+    return false;
+  }
+
+  function doFill() {
+    const mappings = [
+      { label: 'RE',                   value: '' },
+      { label: 'IM',                   value: data.TICKET || '' },
+      { label: 'Responsable',          value: data.RESPONSABLE || '' },
+      { label: 'Codigo',               value: data.CODIGO || '' },
+      { label: 'Servicio',             value: data.SERVICIO || '' },
+      { label: 'Causa',                value: data.CAUSA || '' },
+      { label: 'Estado',               value: data.ESTADO || '' },
+      { label: 'Observacion',          value: data.DESCRIPCION || '' },
+      { label: 'Cierre',               value: data.CIERRE || '' },
+      { label: 'Creacion Ticket',      value: data['CREACION TICKET'] || '' },
+      { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '' },
+      { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || 'NO' },
+      { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || 'NO' },
+      { label: 'Down time claro',      value: data['DOWN TIME CLARO'] ? String(data['DOWN TIME CLARO']) : '' },
+      { label: 'Down Time Davivienda', value: data['DOWN TIME DAVIVIENDA'] ? String(data['DOWN TIME DAVIVIENDA']) : '' },
+      { label: 'Down Time Total',      value: data['DOWN TIME TOTAL'] ? String(data['DOWN TIME TOTAL']) : '' },
+      { label: 'Operacion',            value: data.OPERACION || '' },
+      { label: 'FM',                   value: '' },
+    ];
+    let filled = 0;
+    for (const { label, value } of mappings) {
+      if (setByLabel(label, value)) filled++;
+    }
+    return filled;
+  }
+
+  // Polling: intentar cada 600ms hasta que haya campos disponibles
+  let attempts = 0;
+  const interval = setInterval(() => {
+    attempts++;
+    const inputs = document.querySelectorAll(
+      'input[aria-label], textarea[aria-label], [role="textbox"]'
+    );
+    if (inputs.length >= 2 || attempts >= 25) {
+      clearInterval(interval);
+      const filled = doFill();
+      showToast(
+        filled > 0
+          ? `✅ ${filled} campos rellenados. Revisa y haz clic en Guardar.`
+          : '⚠️ No se pudieron rellenar campos. Verifica los nombres de columnas.',
+        filled > 0
+      );
+    }
+  }, 600);
+}
