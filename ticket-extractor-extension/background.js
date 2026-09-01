@@ -52,7 +52,7 @@ async function uploadToServers(data) {
 
     // ── PASO 1: Buscar si el ticket ya existe en Supabase ──
     const getResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,DESCRIPCION,ACTUALIZACION,CODIGO`,
+      `${SUPABASE_URL}/rest/v1/tickets?TICKET=eq.${cleanTicket}&select=id,OBSERVACION,CAUSA,DESCRIPCION,CODIGO,OPERACION`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
 
@@ -63,45 +63,45 @@ async function uploadToServers(data) {
       if (rows.length > 0) {
         existingId = rows[0].id;
         const oldObs = String(rows[0].OBSERVACION || '').trim();
+        let oldCausa = String(rows[0].CAUSA || '').trim();
         let oldDesc = String(rows[0].DESCRIPCION || '').trim();
-        let oldAct = String(rows[0].ACTUALIZACION || '').trim();
+        const newCausa = String(data.CAUSA || '').trim();
         const newDesc = String(data.DESCRIPCION || '').trim();
-        const newAct = String(data.ACTUALIZACION || '').trim();
         const oldCodigo = String(rows[0].CODIGO || '').trim();
 
-        // Si oldDesc u oldAct vienen nulos de Supabase pero existe oldObs, extraerlos
-        if (!oldDesc && oldObs) {
+        // Si oldCausa u oldDesc vienen nulos de Supabase pero existe oldObs, extraerlos
+        if (!oldCausa && oldObs) {
           const parts = oldObs.split(/\n\n|\r\n\r\n/);
           const nonNotes = parts.filter(p => !p.trim().startsWith('[') && !p.trim().match(/^-\s*\[/));
-          oldDesc = nonNotes.join('\n\n');
+          oldCausa = nonNotes.join('\n\n');
         }
-        if (!oldAct && oldObs) {
+        if (!oldDesc && oldObs) {
           const parts = oldObs.split(/\n\n|\r\n\r\n/);
           const notes = parts.filter(p => p.trim().startsWith('[') || p.trim().match(/^-\s*\[/));
-          oldAct = notes.join('\n\n');
+          oldDesc = notes.join('\n\n');
         }
 
-        // 1. DESCRIPCIÓN: Usar la nueva extraída o conservar la previa
-        data.DESCRIPCION = newDesc || oldDesc || "";
+        // 1. CAUSA: Usar la nueva extraída o conservar la previa
+        data.CAUSA = newCausa || oldCausa || "";
 
-        // 2. ACTUALIZACIÓN (Notas): Fusionar con fecha si hay nota nueva
-        if (newAct) {
-          const timestampNote = '[' + formatFecha(new Date()) + '] ' + newAct;
-          if (oldAct && !oldAct.includes(newAct)) {
-            data.ACTUALIZACION = timestampNote + '\n\n' + oldAct;
-          } else if (!oldAct) {
-            data.ACTUALIZACION = timestampNote;
+        // 2. DESCRIPCION (Notas): Fusionar con fecha si hay nota nueva
+        if (newDesc) {
+          const timestampNote = '[' + formatFecha(new Date()) + '] ' + newDesc;
+          if (oldDesc && !oldDesc.includes(newDesc)) {
+            data.DESCRIPCION = timestampNote + '\n\n' + oldDesc;
+          } else if (!oldDesc) {
+            data.DESCRIPCION = timestampNote;
           } else {
-            data.ACTUALIZACION = oldAct;
+            data.DESCRIPCION = oldDesc;
           }
         } else {
-          data.ACTUALIZACION = oldAct || "";
+          data.DESCRIPCION = oldDesc || "";
         }
 
         // Mantener OBSERVACION sincronizada para retrocompatibilidad
-        data.OBSERVACION = data.ACTUALIZACION 
-          ? (data.DESCRIPCION ? data.ACTUALIZACION + '\n\n' + data.DESCRIPCION : data.ACTUALIZACION)
-          : data.DESCRIPCION;
+        data.OBSERVACION = data.DESCRIPCION 
+          ? (data.CAUSA ? data.DESCRIPCION + '\n\n' + data.CAUSA : data.DESCRIPCION)
+          : data.CAUSA;
 
         // Proteger CÓDIGO
         if (oldCodigo && oldCodigo.length < 20 && (!data.CODIGO || data.CODIGO.length > 20)) {
@@ -128,10 +128,11 @@ async function uploadToServers(data) {
     });
 
     if (!saveResp.ok && saveResp.status === 400) {
-      console.warn('[WARN] Reintentando guardar sin DESCRIPCION/ACTUALIZACION por si no se han creado en Supabase');
+      console.warn('[WARN] Reintentando guardar sin CAUSA/DESCRIPCION/OPERACION por si no se han creado en Supabase');
       const fallbackData = { ...data };
+      delete fallbackData.CAUSA;
       delete fallbackData.DESCRIPCION;
-      delete fallbackData.ACTUALIZACION;
+      delete fallbackData.OPERACION;
       saveResp = await fetch(url, {
         method,
         headers: {

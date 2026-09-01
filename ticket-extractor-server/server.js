@@ -18,9 +18,9 @@ const EXCEL_FILE = path.join(ONEDRIVE_PATH, 'Bitacora Davivienda  2026 - Telefon
 
 // El orden de las columnas que definiste
 const HEADERS = [
-  "TICKET", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", "DESCRIPCION",
+  "TICKET", "OPERACION", "RESPONSABLE", "CODIGO", "SERVICIO", "ESTADO", "CAUSA", "DESCRIPCION",
   "CIERRE", "CREACION TICKET", "INDISPONIBILIDAD", "SUBIDA SOLAR", "FUERZA MAYOR",
-  "DOWN TIME CLARO", "DOWN TIME DAVIVIENDA", "DOWN TIME  TOTAL", "ACTUALIZACION"
+  "DOWN TIME CLARO", "DOWN TIME DAVIVIENDA", "DOWN TIME TOTAL"
 ];
 
 function formatFecha(date) {
@@ -72,37 +72,36 @@ app.post('/append', async (req, res) => {
 
     const targetRow = existingRowIndex !== -1 ? existingRowIndex : rowNum;
     
-    // Columnas mapeadas A-O
+    // Columnas mapeadas A-P
     const colMap = {
-      "TICKET": "A", "RESPONSABLE": "B", "CODIGO": "C", "SERVICIO": "D", "ESTADO": "E", "DESCRIPCION": "F",
-      "OBSERVACION": "F", "CIERRE": "G", "CREACION TICKET": "H", "INDISPONIBILIDAD": "I", "SUBIDA SOLAR": "J",
-      "FUERZA MAYOR": "K", "DOWN TIME CLARO": "L", "DOWN TIME DAVIVIENDA": "M", "DOWN TIME  TOTAL": "N",
-      "ACTUALIZACION": "O"
+      "TICKET": "A", "OPERACION": "B", "RESPONSABLE": "C", "CODIGO": "D", "SERVICIO": "E", "ESTADO": "F", "CAUSA": "G",
+      "DESCRIPCION": "H", "CIERRE": "I", "CREACION TICKET": "J", "INDISPONIBILIDAD": "K", "SUBIDA SOLAR": "L",
+      "FUERZA MAYOR": "M", "DOWN TIME CLARO": "N", "DOWN TIME DAVIVIENDA": "O", "DOWN TIME TOTAL": "P"
     };
 
     if (existingRowIndex !== -1) {
       // Actualizar fila existente de forma segura
-      if (data.DESCRIPCION) {
-        let oldDesc = sheet.cell(`F${targetRow}`).value() || "";
-        if (!oldDesc || oldDesc === "Sin observación") {
-          sheet.cell(`F${targetRow}`).value(data.DESCRIPCION);
+      if (data.CAUSA) {
+        let oldCausa = sheet.cell(`G${targetRow}`).value() || "";
+        if (!oldCausa || oldCausa === "Sin observación") {
+          sheet.cell(`G${targetRow}`).value(data.CAUSA);
         }
       }
 
-      if (data.ACTUALIZACION && data.ACTUALIZACION !== "Sin observación") {
-        let oldAct = sheet.cell(`O${targetRow}`).value() || "";
-        let newAct = data.ACTUALIZACION;
-        if (oldAct && oldAct !== "Sin observación") {
-          if (!String(oldAct).includes(newAct)) {
-            sheet.cell(`O${targetRow}`).value('[' + formatFecha(new Date()) + '] ' + newAct + '\n\n' + oldAct);
+      if (data.DESCRIPCION && data.DESCRIPCION !== "Sin observación") {
+        let oldDesc = sheet.cell(`H${targetRow}`).value() || "";
+        let newDesc = data.DESCRIPCION;
+        if (oldDesc && oldDesc !== "Sin observación") {
+          if (!String(oldDesc).includes(newDesc)) {
+            sheet.cell(`H${targetRow}`).value('[' + formatFecha(new Date()) + '] ' + newDesc + '\n\n' + oldDesc);
           }
         } else {
-          sheet.cell(`O${targetRow}`).value(newAct);
+          sheet.cell(`H${targetRow}`).value(newDesc);
         }
       }
 
       HEADERS.forEach(header => {
-        if (header !== 'DESCRIPCION' && header !== 'ACTUALIZACION' && data[header] !== undefined && data[header] !== "") {
+        if (header !== 'CAUSA' && header !== 'DESCRIPCION' && data[header] !== undefined && data[header] !== "") {
           const col = colMap[header];
           if (col) sheet.cell(`${col}${targetRow}`).value(data[header]);
         }
@@ -115,9 +114,9 @@ app.post('/append', async (req, res) => {
           sheet.cell(`${col}${targetRow}`).value(data[header]);
         }
       });
-      // Asegurar el encabezado de la columna O si no existe
-      if (!sheet.cell('O1').value()) {
-        sheet.cell('O1').value('ACTUALIZACION');
+      // Asegurar el encabezado de la columna H si no existe
+      if (!sheet.cell('H1').value()) {
+        sheet.cell('H1').value('DESCRIPCION');
       }
     }
 

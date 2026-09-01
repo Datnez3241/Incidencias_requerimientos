@@ -262,9 +262,8 @@ function extractDataCore(requestNote, responsableConfig) {
     "CODIGO": codigoReal,
     "SERVICIO": titulo || "SIN SERVICIO",
     "ESTADO": estado || "CERRADO",
-    "DESCRIPCION": descripcion,
-    "ACTUALIZACION": actualizacion,
-    "OBSERVACION": actualizacion || (descripcion ? descripcion : ""),
+    "CAUSA": descripcion,
+    "DESCRIPCION": actualizacion,
     "CIERRE": cierre,
     "CREACION TICKET": creacion || "",
     "INDISPONIBILIDAD": isRF ? "NO" : (finInterrupcion || "NO"),
@@ -323,7 +322,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         navigator.clipboard.writeText(request.note).catch(err => console.log('Error al copiar al portapapeles: ', err));
     }
 
-    data.PLATAFORMA = request.platform || "Telefonía";
+    data.OPERACION = request.platform || "Telefonía";
     chrome.runtime.sendMessage({ action: "uploadData", data: data }).catch(() => {});
     
     if (request.note) {
@@ -356,7 +355,7 @@ function triggerBackgroundExtraction() {
         // ¡Extraer INMEDIATAMENTE antes de que la página recargue o bloquee!
         let data = extractDataCore("", responsable);
         if (data && data.TICKET && (data.TICKET.startsWith('IM') || data.TICKET.startsWith('RF'))) {
-            data.PLATAFORMA = platform;
+            data.OPERACION = platform;
             chrome.runtime.sendMessage({ action: "uploadData", data: data }).catch(() => {});
         } else {
             console.log("[SEGUNDO PLANO] No se detectó un ticket IM o RF válido. Extracción abortada.", data);

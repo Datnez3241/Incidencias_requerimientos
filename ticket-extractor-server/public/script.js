@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Platform filter
             let matchesPlatform = true;
             if (currentPlatform !== 'Todas') {
-                matchesPlatform = (t.PLATAFORMA === currentPlatform);
+                matchesPlatform = (t.OPERACION === currentPlatform || t.PLATAFORMA === currentPlatform);
             }
 
             // Date filter
@@ -259,41 +259,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function parseDescAndAct(t) {
+        let causa = String(t.CAUSA || '').trim();
         let desc = String(t.DESCRIPCION || '').trim();
-        let act = String(t.ACTUALIZACION || '').trim();
         let obs = String(t.OBSERVACION || '').trim();
 
-        if (desc === 'Descripción:' || desc === 'Descripción' || desc.toLowerCase() === 'null') {
-            desc = '';
+        if (causa === 'Descripción:' || causa === 'Descripción' || causa.toLowerCase() === 'null') {
+            causa = '';
         }
 
-        if ((!desc || desc === 'null') && (!act || act === 'null') && obs) {
+        if ((!causa || causa === 'null') && (!desc || desc === 'null') && obs) {
             const parts = obs.split(/(?:\r?\n){2,}/);
-            let actBlocks = [];
-            let descLines = [];
+            let descBlocks = [];
+            let causaLines = [];
 
             parts.forEach(part => {
                 const trimmed = part.trim();
                 if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
-                    actBlocks.push(trimmed);
+                    descBlocks.push(trimmed);
                 } else if (trimmed && trimmed !== 'Descripción:' && trimmed !== 'Descripción') {
-                    descLines.push(trimmed);
+                    causaLines.push(trimmed);
                 }
             });
 
-            if (actBlocks.length > 0) act = actBlocks.join('\n\n');
-            if (descLines.length > 0) desc = descLines.join('\n\n');
-            if (!desc && !act) desc = obs;
+            if (descBlocks.length > 0) desc = descBlocks.join('\n\n');
+            if (causaLines.length > 0) causa = causaLines.join('\n\n');
+            if (!causa && !desc) causa = obs;
         }
 
-        if (!desc && t.SERVICIO) {
+        if (!causa && t.SERVICIO) {
             const parts = String(t.SERVICIO).split('+');
-            desc = parts[parts.length - 1].trim();
+            causa = parts[parts.length - 1].trim();
         }
 
         return {
-            desc: desc && desc !== 'null' ? desc : '-',
-            act: act && act !== 'null' ? act : '-'
+            causa: causa && causa !== 'null' ? causa : '-',
+            desc: desc && desc !== 'null' ? desc : '-'
         };
     }
 
@@ -305,20 +305,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const allColumns = [
             { header: "TICKET", key: "TICKET", index: 1 },
-            { header: "RESPONSABLE", key: "RESPONSABLE", index: 2 },
-            { header: "CODIGO", key: "CODIGO", index: 3 },
-            { header: "SERVICIO", key: "SERVICIO", index: 4 },
-            { header: "ESTADO", key: "ESTADO", index: 5 },
-            { header: "DESCRIPCION", key: "DESCRIPCION", index: 6 },
-            { header: "ACTUALIZACION", key: "ACTUALIZACION", index: 7 },
-            { header: "CIERRE", key: "CIERRE", index: 8 },
-            { header: "CREACION TICKET", key: "CREACION TICKET", index: 9 },
-            { header: "INDISPONIBILIDAD", key: "INDISPONIBILIDAD", index: 10 },
-            { header: "SUBIDA SOLAR", key: "SUBIDA SOLAR", index: 11 },
-            { header: "FUERZA MAYOR", key: "FUERZA MAYOR", index: 12 },
-            { header: "DOWN TIME CLARO", key: "DOWN TIME CLARO", index: 13 },
-            { header: "DOWN TIME DAVIVIENDA", key: "DOWN TIME DAVIVIENDA", index: 14 },
-            { header: "DOWN TIME TOTAL", key: "DOWN TIME TOTAL", index: 15 }
+            { header: "OPERACION", key: "OPERACION", index: 2 },
+            { header: "RESPONSABLE", key: "RESPONSABLE", index: 3 },
+            { header: "CODIGO", key: "CODIGO", index: 4 },
+            { header: "SERVICIO", key: "SERVICIO", index: 5 },
+            { header: "ESTADO", key: "ESTADO", index: 6 },
+            { header: "CAUSA", key: "CAUSA", index: 7 },
+            { header: "DESCRIPCION", key: "DESCRIPCION", index: 8 },
+            { header: "CIERRE", key: "CIERRE", index: 9 },
+            { header: "CREACION TICKET", key: "CREACION TICKET", index: 10 },
+            { header: "INDISPONIBILIDAD", key: "INDISPONIBILIDAD", index: 11 },
+            { header: "SUBIDA SOLAR", key: "SUBIDA SOLAR", index: 12 },
+            { header: "FUERZA MAYOR", key: "FUERZA MAYOR", index: 13 },
+            { header: "DOWN TIME CLARO", key: "DOWN TIME CLARO", index: 14 },
+            { header: "DOWN TIME DAVIVIENDA", key: "DOWN TIME DAVIVIENDA", index: 15 },
+            { header: "DOWN TIME TOTAL", key: "DOWN TIME TOTAL", index: 16 }
         ];
 
         const columnMenu = document.getElementById('columnMenu');
@@ -347,8 +348,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = parseDescAndAct(t);
             let row = keys.map(k => {
                 let val = t[k];
+                if (k === "CAUSA") val = parsed.causa !== '-' ? parsed.causa : '';
                 if (k === "DESCRIPCION") val = parsed.desc !== '-' ? parsed.desc : '';
-                if (k === "ACTUALIZACION") val = parsed.act !== '-' ? parsed.act : '';
                 if (!val) val = '';
                 // Reemplazar saltos de línea para no romper las filas del CSV
                 val = String(val).replace(/\r\n/g, ' | ').replace(/\n/g, ' | ').replace(/\r/g, ' | ');
@@ -394,16 +395,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeClass = 'curso';
             }
 
-            const { desc: descText, act: actText } = parseDescAndAct(t);
+            const { causa: causaText, desc: descText } = parseDescAndAct(t);
 
             tr.innerHTML = `
                 <td><strong>${t.TICKET || '-'}</strong></td>
+                <td>${t.OPERACION || '-'}</td>
                 <td>${t.RESPONSABLE || '-'}</td>
                 <td>${t.CODIGO || '-'}</td>
                 <td title="${t.SERVICIO || ''}"><div class="obs-cell text-clamp">${t.SERVICIO || '-'}</div></td>
                 <td><span class="badge ${badgeClass}">${status}</span></td>
+                <td title="${causaText}"><div class="obs-cell text-clamp">${causaText}</div></td>
                 <td title="${descText}"><div class="obs-cell text-clamp">${descText}</div></td>
-                <td title="${actText}"><div class="obs-cell text-clamp">${actText}</div></td>
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>
                 <td>${t.INDISPONIBILIDAD || '-'}</td>
@@ -426,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn-view" data-index="${i}" title="Ver Detalles" style="background: transparent; border: none; color: #10b981; cursor: pointer; padding: 2px;">
                         <i class="ph ph-eye" style="font-size: 14px;"></i>
                     </button>
-                    <button class="btn-edit" data-id="${t.id}" data-act="${actText !== '-' ? actText : ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Actualización" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
+                    <button class="btn-edit" data-id="${t.id}" data-desc="${descText !== '-' ? descText : ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Descripción" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
                         <i class="ph ph-pencil-simple" style="font-size: 14px;"></i>
                     </button>
                     <button class="btn-delete" data-id="${t.id}" title="Eliminar Ticket" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">
@@ -548,16 +550,16 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', (e) => {
                 const idx = e.currentTarget.getAttribute('data-index');
                 const t = tickets[idx];
-                const { desc: descVal, act: actVal } = parseDescAndAct(t);
+                const { causa: causaVal, desc: descVal } = parseDescAndAct(t);
                 
                 document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.TICKET || 'Sin ID');
                 
                 // --- Extraer el último registro con timestamp [DD/MM/AA HH:mm:ss] ---
-                const actText = actVal !== '-' ? actVal : '';
+                const descText = descVal !== '-' ? descVal : '';
                 const timestampRegex = /(?:^|[\s-]+)(\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\][\s\S]*?)(?=(?:\s*-?\s*\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\])|$)/g;
                 const matches = [];
                 let match;
-                while ((match = timestampRegex.exec(actText)) !== null) {
+                while ((match = timestampRegex.exec(descText)) !== null) {
                     matches.push(match[1].trim());
                 }
                 const lastRecord = matches.length > 0 ? matches[matches.length - 1] : null;
@@ -584,9 +586,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <p><strong>Servicio:</strong><br>${t.SERVICIO || '-'}</p>
                     <br>
-                    <p><strong>Descripción de la Solicitud:</strong><br><span style="color:#444;">${descVal}</span></p>
+                    <p><strong>Causa (Antes Descripción):</strong><br><span style="color:#444;">${causaVal}</span></p>
                     <br>
-                    <p><strong>Actualización / Pendientes (Bitácora):</strong><br><span style="color:#444;">${actVal}</span></p>
+                    <p><strong>Descripción / Actualización (Bitácora):</strong><br><span style="color:#444;">${descVal}</span></p>
                     ${lastRecord ? `
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <div style="background-color:#fffacd; border-left: 3px solid #999; padding: 6px 10px;">
@@ -607,10 +609,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.currentTarget.getAttribute('data-id');
-                const oldAct = e.currentTarget.getAttribute('data-act') || e.currentTarget.getAttribute('data-obs') || '';
-                const newAct = prompt('Editar Actualización / Pendientes:', oldAct);
+                const oldDesc = e.currentTarget.getAttribute('data-desc') || e.currentTarget.getAttribute('data-obs') || '';
+                const newDesc = prompt('Editar Descripción / Actualización:', oldDesc);
                 
-                if (newAct !== null && newAct !== oldAct) {
+                if (newDesc !== null && newDesc !== oldDesc) {
                     try {
                         const SUPABASE_URL = 'https://yjcgklhdoohuoxmifpnw.supabase.co';
                         const SUPABASE_KEY = 'sb_publishable_kCR2lZlyJuzIlwjuXArOLQ_IJ3KXxre';
@@ -621,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ ACTUALIZACION: newAct, OBSERVACION: newAct })
+                            body: JSON.stringify({ DESCRIPCION: newDesc, OBSERVACION: newDesc })
                         });
                         if (response.ok) {
                             fetchData(); // Recargar datos
