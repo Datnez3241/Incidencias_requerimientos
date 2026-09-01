@@ -3,7 +3,6 @@ async function runExtraction(actionName) {
   const noteText = document.getElementById('updateNote').value.trim();
   const platform = document.getElementById('platformSelectMain').value || document.getElementById('platformSelect').value;
   const causa = document.getElementById('causaSelect').value;
-  const subidaSolar = document.getElementById('subidaSolarSelect').value;
   const subidaSolarDate = document.getElementById('subidaSolarDate').value;
   let responsable = document.getElementById('responsableInput').value.trim();
   if (!responsable) responsable = "DIEGO";
@@ -28,7 +27,6 @@ async function runExtraction(actionName) {
           platform: platform,
           causa: causa,
           responsable: responsable,
-          subidaSolar: subidaSolar,
           subidaSolarDate: subidaSolarDate
       }, { frameId: 0 }, (response) => {
         if (chrome.runtime.lastError) {
@@ -43,8 +41,7 @@ async function runExtraction(actionName) {
           if (response.data) {
             response.data.OPERACION = platform;
             if (causa) response.data.CAUSA = causa;
-            if (subidaSolar) response.data['SUBIDA SOLAR'] = subidaSolar;
-            if (subidaSolarDate) response.data['FECHA SUBIDA SOLAR'] = subidaSolarDate;
+            if (subidaSolarDate) response.data['SUBIDA SOLAR'] = subidaSolarDate;
             chrome.storage.local.set({ lastExtractedTicket: response.data });
           }
         } else if (response && response.errorMsg) {
@@ -83,16 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Cargar configuración guardada
-  chrome.storage.local.get(['savedPlatform', 'savedResponsable', 'savedCausa', 'savedSubidaSolar', 'savedSubidaSolarDate', 'autoExtractEnabled'], (result) => {
+  chrome.storage.local.get(['savedPlatform', 'savedResponsable', 'savedCausa', 'savedSubidaSolarDate', 'autoExtractEnabled'], (result) => {
     if (result.savedPlatform) {
       document.getElementById('platformSelect').value = result.savedPlatform;
       document.getElementById('platformSelectMain').value = result.savedPlatform;
     }
     if (result.savedCausa) {
       document.getElementById('causaSelect').value = result.savedCausa;
-    }
-    if (result.savedSubidaSolar) {
-      document.getElementById('subidaSolarSelect').value = result.savedSubidaSolar;
     }
     if (result.savedSubidaSolarDate) {
       document.getElementById('subidaSolarDate').value = result.savedSubidaSolarDate;
@@ -114,10 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('causaSelect').addEventListener('change', (e) => {
     chrome.storage.local.set({ savedCausa: e.target.value });
-  });
-
-  document.getElementById('subidaSolarSelect').addEventListener('change', (e) => {
-    chrome.storage.local.set({ savedSubidaSolar: e.target.value });
   });
 
   document.getElementById('subidaSolarDate').addEventListener('change', (e) => {
@@ -420,8 +410,7 @@ function fillSharePointForm(data) {
     
     // === INDICADORES DE IMPACTO ===
     { label: 'Indisponibilidad',     value: data.INDISPONIBILIDAD || '',                 type: 'choice', category: 'impacto' },
-    { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || 'NO',               type: 'choice', category: 'impacto' },
-    { label: 'Fecha Subida Solar',   value: data['FECHA SUBIDA SOLAR'] || '',           type: 'text',   category: 'impacto' },
+    { label: 'Subida Solar',         value: data['SUBIDA SOLAR'] || '',                 type: 'text',   category: 'impacto' },
     { label: 'Fuerza Mayor',         value: data['FUERZA MAYOR'] || 'NO',               type: 'choice', category: 'impacto' },
     
     // === TIEMPOS DE INACTIVIDAD ===
