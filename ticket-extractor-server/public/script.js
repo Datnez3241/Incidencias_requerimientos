@@ -381,6 +381,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 let val = t[k];
                 if (k === "CAUSA") val = parsed.causa !== '-' ? parsed.causa : '';
                 if (k === "DESCRIPCION") val = parsed.desc !== '-' ? parsed.desc : '';
+                // Normalizar Fuerza Mayor: SI→Si, NO→No
+                if (k === "FUERZA MAYOR") {
+                    const fv = String(val || '').trim().toUpperCase();
+                    val = fv === 'SI' ? 'Si' : fv === 'NO' ? 'No' : (val || '');
+                }
+                // Normalizar Subida Solar: fecha DD/MM/YY o vacío
+                if (k === "SUBIDA SOLAR") {
+                    const sv = String(val || '').trim();
+                    if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') {
+                        val = '';
+                    } else {
+                        const isoMatch = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                        val = isoMatch ? `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(2)}` : sv;
+                    }
+                }
                 if (!val) val = '';
                 // Reemplazar saltos de línea para no romper las filas del CSV
                 val = String(val).replace(/\r\n/g, ' | ').replace(/\n/g, ' | ').replace(/\r/g, ' | ');
