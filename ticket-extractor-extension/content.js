@@ -300,7 +300,20 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
 
   let cierre = cleanText(getValue('#X102View') || getValue('#X177View') || getValue('textarea[name="instance/resolution"]') || getTextByLabel('Solución:'));
   
-  let creacion = getValue('input[name="instance/downtime.start"]') || getValue('input[alias="instance/downtime.start"]') || getValue('#X62') || getValue('input[name="instance/submit.date"]');
+  let creacion = getValue('input[name="instance/downtime.start"]') 
+              || getValue('input[alias="instance/downtime.start"]') 
+              || getValue('#X62') 
+              || getValue('input[name="instance/submit.date"]')
+              || getValue('input[alias="instance/submit.date"]')
+              || getValue('input[name="instance/open.time"]')
+              || getValue('input[alias="instance/open.time"]')
+              || getValue('#X63')
+              || getValue('#X64')
+              || getTextByLabel('Inicio de la interrupción:')
+              || getTextByLabel('Inicio de interrupción:')
+              || getTextByLabel('Inicio de la i')
+              || getTextByLabel('Fecha de apertura:')
+              || getTextByLabel('Fecha de inicio:');
   let finInterrupcion = getValue('input[name="instance/downtime.end"]') || getValue('input[alias="instance/downtime.end"]') || getValue('#X66');
   if (finInterrupcion && (finInterrupcion.includes('Fin de la interrupción') || finInterrupcion.includes('Fin de Interrupción'))) {
     finInterrupcion = ""; // Prevent grabbing the label text by mistake
