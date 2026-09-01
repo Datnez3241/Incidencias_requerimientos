@@ -263,6 +263,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let desc = String(t.DESCRIPCION || '').trim();
         let obs = String(t.OBSERVACION || '').trim();
 
+        // Compatibilidad hacia atrás: Si no hay CAUSA pero existe ACTUALIZACION,
+        // entonces DESCRIPCION (que viene de la base de datos) es en realidad la antigua CAUSA.
+        // Y ACTUALIZACION es la nueva DESCRIPCION.
+        if (!t.CAUSA && t.ACTUALIZACION) {
+            causa = String(t.DESCRIPCION || '').trim();
+            desc = String(t.ACTUALIZACION || '').trim();
+        }
+
         if (causa === 'Descripción:' || causa === 'Descripción' || causa.toLowerCase() === 'null') {
             causa = '';
         }
