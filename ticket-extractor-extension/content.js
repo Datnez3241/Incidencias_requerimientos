@@ -118,6 +118,37 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
     return "";
   }
 
+  // Busca por atributo name o alias en todos los iframes, sin filtro de visibilidad
+  // Útil para inputs readonly (fechas, campos bloqueados en ExtJS)
+  function getValueByName(attrName) {
+    let result = "";
+    const searchDoc = (d) => {
+      try {
+        const selectors = [
+          `input[name="${attrName}"]`,
+          `input[alias="${attrName}"]`,
+          `textarea[name="${attrName}"]`
+        ];
+        for (const sel of selectors) {
+          const els = d.querySelectorAll(sel);
+          for (const el of els) {
+            const v = (el.value || el.getAttribute('value') || "").trim();
+            if (v && !v.includes('hpsm')) { result = v; return; }
+          }
+        }
+        const frames = d.querySelectorAll('iframe, frame');
+        for (let frame of frames) {
+          try {
+            if (frame.contentDocument) searchDoc(frame.contentDocument);
+          } catch(e) {}
+          if (result) return;
+        }
+      } catch(e) {}
+    };
+    searchDoc(document);
+    return result;
+  }
+
 
   const getTextByLabel = (labelText) => {
     let result = "";
@@ -300,18 +331,14 @@ function extractDataCore(requestNote, responsableConfig, subidaSolarDate) {
 
   let cierre = cleanText(getValue('#X102View') || getValue('#X177View') || getValue('textarea[name="instance/resolution"]') || getTextByLabel('Solución:'));
   
-  let creacion = getValue('input[name="instance/downtime.start"]') 
-              || getValue('input[alias="instance/downtime.start"]') 
+  let creacion = getValueByName('instance/downtime.start')
+              || getValueByName('instance/submit.date')
+              || getValueByName('instance/open.time')
               || getValue('#X62') 
-              || getValue('input[name="instance/submit.date"]')
-              || getValue('input[alias="instance/submit.date"]')
-              || getValue('input[name="instance/open.time"]')
-              || getValue('input[alias="instance/open.time"]')
               || getValue('#X63')
               || getValue('#X64')
               || getTextByLabel('Inicio de la interrupción:')
               || getTextByLabel('Inicio de interrupción:')
-              || getTextByLabel('Inicio de la i')
               || getTextByLabel('Fecha de apertura:')
               || getTextByLabel('Fecha de inicio:');
   let finInterrupcion = getValue('input[name="instance/downtime.end"]') || getValue('input[alias="instance/downtime.end"]') || getValue('#X66');
