@@ -1,0 +1,451 @@
+/* Diseño Clásico / "Old-School" Expert Application */
+body {
+    font-family: Tahoma, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    background-color: #f0f0f0;
+    color: #333333;
+    margin: 0;
+    padding: 0;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar (Menu Lateral Fijo) */
+.sidebar {
+    width: 220px;
+    background-color: #18181B; /* El fondo negro premium */
+    border-right: 1px solid #27272A;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.sidebar h2 {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #FAFAFA;
+}
+
+.sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    color: #A1A1AA;
+    padding: 6px 8px; /* Un poco más de padding */
+    margin-bottom: 2px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.sidebar nav a:hover {
+    background-color: rgba(255,255,255,0.05);
+    color: #D4D4D8;
+}
+
+.sidebar nav a.active {
+    background-color: rgba(255,255,255,0.1);
+    color: #FAFAFA;
+    border: none;
+}
+
+/* Iconos Utilitarios */
+.ph {
+    font-size: 12px;
+    color: inherit; /* Hereda el color del texto para que se vean bien en fondo negro o blanco */
+}
+
+/* Contenido Principal */
+.main-content {
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background-color: #ffffff;
+    box-sizing: border-box;
+}
+
+.top-header {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.top-header h1 {
+    font-size: 12px;
+    font-weight: bold;
+    margin: 0;
+    color: #000;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Botones Básicos de Sistema */
+button {
+    font-family: Tahoma, Arial, sans-serif;
+    font-size: 12px;
+    padding: 3px 8px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    cursor: pointer;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Botones de acción dentro de la tabla: no deben expandir la fila */
+td button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    line-height: 1;
+    vertical-align: middle;
+    height: auto;
+    min-height: unset;
+}
+
+button:hover {
+    background-color: #e5e5e5;
+    border-color: #999;
+}
+
+button.danger {
+    background-color: #991B1B; /* El rojo quemado solicitado anteriormente para el botón Refrescar */
+    color: #FFFFFF;
+    border-color: #7F1D1D;
+}
+
+button.danger i {
+    color: #FFFFFF;
+}
+
+button.danger:hover {
+    background-color: #7F1D1D;
+}
+
+/* KPIs Densos */
+.kpi-grid {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.kpi-card {
+    border: 1px solid #ccc;
+    background-color: #fafafa;
+    padding: 6px 10px;
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kpi-header {
+    font-size: 12px;
+    color: #333;
+    font-weight: normal;
+}
+
+.kpi-value {
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+}
+
+#tableView {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* Barra de Herramientas Compacta */
+.toolbar {
+    display: flex;
+    gap: 15px;
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.input-group label {
+    font-weight: bold;
+}
+
+/* Inputs nativos */
+input[type="text"], input[type="date"], select {
+    font-family: Tahoma, Arial, sans-serif;
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid #7a9ac5; /* Borde azulado estilo Windows antiguo */
+    background-color: #fff;
+}
+
+/* Tabla de Alta Densidad */
+.table-container {
+    border: 1px solid #ccc;
+    overflow: auto;
+    flex: 1;
+    background-color: #fff;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 1px 2px; /* Padding ultra reducido al mínimo absoluto */
+    text-align: left;
+    white-space: nowrap;
+    line-height: 1;
+    height: 16px; /* Altura hiper forzada */
+}
+
+th {
+    background-color: #e0e0e0;
+    font-weight: bold;
+    background-image: linear-gradient(#f9f9f9, #e0e0e0);
+    color: #000;
+    cursor: pointer;
+}
+
+th i {
+    font-size: 10px;
+    color: #888;
+    margin-left: 5px;
+}
+
+tr:nth-child(even) td {
+    background-color: #f9f9f9;
+}
+
+tr:hover td {
+    background-color: #fffacd; /* Highlight amarillo clásico */
+}
+
+/* Badges estilo tabla de datos */
+.badge {
+    padding: 1px 4px;
+    font-size: 12px;
+    border: 1px solid #999;
+    border-radius: 2px;
+}
+
+.badge.abierto { background-color: #ccffcc; color: #006600; }
+.badge.cerrado { background-color: #e0e0e0; color: #333333; }
+.badge.curso { background-color: #ffffcc; color: #666600; }
+
+.obs-cell {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Toggle SI/NO para Subida Solar y Fuerza Mayor */
+.td-toggle {
+    text-align: center;
+}
+
+.btn-toggle {
+    cursor: pointer;
+    display: inline;
+    font-size: 12px;
+    user-select: none;
+    font-family: Tahoma, Arial, sans-serif;
+}
+
+.toggle-si {
+    color: #006600;
+    font-weight: bold;
+}
+
+.toggle-no {
+    color: #333;
+    font-weight: normal;
+}
+
+.btn-toggle:hover {
+    text-decoration: underline;
+}
+
+/* Dropdown SI/NO flotante */
+.sino-dropdown {
+    position: fixed;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    padding: 4px;
+    z-index: 9998;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 60px;
+}
+
+.sino-option {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 3px 6px;
+    font-family: Tahoma, Arial, sans-serif;
+}
+
+.sino-option:hover {
+    background-color: #cce8ff;
+}
+
+/* Gráficos */
+.charts-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.chart-container {
+    border: 1px solid #ccc;
+    background-color: #fff;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.chart-container h3 {
+    background-image: linear-gradient(#f9f9f9, #e0e0e0);
+    border-bottom: 1px solid #ccc;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: normal;
+    margin: 0;
+    color: #333;
+}
+.chart-container canvas {
+    padding: 10px;
+    max-height: 250px;
+    width: calc(100% - 20px) !important;
+}
+
+/* Modal de Visualización de Detalles */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background-color: #f0f0f0;
+    border: 1px solid #999;
+    width: 500px;
+    max-width: 90%;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    background-image: linear-gradient(#f9f9f9, #e0e0e0);
+    border-bottom: 1px solid #ccc;
+    padding: 5px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: #333;
+    padding: 0 4px;
+}
+.close-btn:hover { background-color: #ccc; }
+
+.modal-body {
+    padding: 15px;
+    background-color: #fff;
+    font-size: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.modal-body p {
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+    user-select: text; /* Permite selección de texto */
+}
+.modal-body strong {
+    color: #000;
+}
+
+/* Selector de Columnas */
+.column-toggle-container {
+    position: relative;
+}
+
+.column-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    padding: 5px;
+    z-index: 100;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.column-menu label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.column-menu label:hover {
+    background-color: #cce8ff;
+}
+
+/* Clase para ocultar celdas */
+.col-hidden {
+    display: none !important;
+}

@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/ticket-extractor-server/public/$1"
+    }
+  ]
+}

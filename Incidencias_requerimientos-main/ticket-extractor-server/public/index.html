@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Incidentes</title>
+    <!-- Iconos Phosphor (para emular los mapas de bits) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <h2>Panel de Control</h2>
+            </div>
+            <nav id="sidebarNav">
+                <a href="#" class="active" data-platform="Todas"><i class="ph ph-warning"></i> Incidentes (Todos)</a>
+                <a href="#" data-platform="Telefonia"><i class="ph ph-headphones"></i> Telefonia</a>
+                <a href="#" data-platform="Datos"><i class="ph ph-book"></i> Datos</a>
+                <a href="#" data-platform="Hotspot"><i class="ph ph-star"></i> Hotspot</a>
+                
+                <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ccc;">
+                
+                <a href="#" id="navReportes"><i class="ph ph-chart-line-up"></i> Reportes / Estadísticas</a>
+                <a href="#"><i class="ph ph-gear"></i> Configuración</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1>Incidente</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="refreshBtn" class="danger">
+                        <i class="ph ph-arrows-clockwise"></i> Actualizar
+                    </button>
+                    <!-- El usuario solicitó eliminar "Nuevo Ticket" en el paso anterior -->
+                </div>
+            </header>
+
+            <!-- KPIs -->
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-header">Total Casos</div>
+                    <div class="kpi-value" id="kpiTotal">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">Casos Abiertos</div>
+                    <div class="kpi-value" id="kpiOpen">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">Downtime (Min)</div>
+                    <div class="kpi-value" id="kpiDowntime">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">Casos Cerrados</div>
+                    <div class="kpi-value" id="kpiClosed">0</div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section id="chartsView" class="charts-section" style="display: none;">
+                <div class="chart-container">
+                    <h3>Distribución de Downtime (Minutos)</h3>
+                    <canvas id="downtimeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Estado de Tickets</h3>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Table Section -->
+            <section id="tableView">
+                <div class="toolbar">
+                    <div class="input-group">
+                        <label>Desde:</label>
+                        <input type="date" id="dateFrom" title="Fecha Desde">
+                    </div>
+                    <div class="input-group">
+                        <label>Hasta:</label>
+                        <input type="date" id="dateTo" title="Fecha Hasta">
+                    </div>
+                    <div class="input-group">
+                        <label>Vista:</label>
+                        <select id="statusFilter" class="status-filter">
+                            <option value="all">Todos los Estados</option>
+                            <option value="open">Abiertos</option>
+                            <option value="closed">Cerrados</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Espaciador flexible -->
+                    <div style="flex: 1;"></div>
+
+                    <!-- Botón y Menú de Columnas -->
+                    <div class="column-toggle-container">
+                        <button id="columnBtn">
+                            <i class="ph ph-table"></i> Columnas <i class="ph ph-caret-down" style="font-size: 10px;"></i>
+                        </button>
+                        <div id="columnMenu" class="column-menu" style="display: none;">
+                            <!-- Checkboxes generados por JS -->
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" id="searchInput" placeholder="Buscar por IM o CÓDIGO...">
+                    </div>
+                    <button id="exportBtn">
+                        <i class="ph ph-export"></i> Exportar
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table id="ticketsTable">
+                        <thead>
+                            <tr>
+                                <th>IM <i class="ph ph-caret-up-down"></i></th>
+                                <th>Operación <i class="ph ph-caret-up-down"></i></th>
+                                <th>Responsable <i class="ph ph-caret-up-down"></i></th>
+                                <th>Código <i class="ph ph-caret-up-down"></i></th>
+                                <th>Servicio <i class="ph ph-caret-up-down"></i></th>
+                                <th>Causa <i class="ph ph-caret-up-down"></i></th>
+                                <th>Estado <i class="ph ph-caret-up-down"></i></th>
+                                <th>Descripción <i class="ph ph-caret-up-down"></i></th>
+                                <th>Cierre <i class="ph ph-caret-up-down"></i></th>
+                                <th>Inicio <i class="ph ph-caret-up-down"></i></th>
+                                <th>Indisp. <i class="ph ph-caret-up-down"></i></th>
+                                <th>Subida Solar</th>
+                                <th>Fuerza Mayor</th>
+                                <th>DT Claro</th>
+                                <th>DT Davivienda</th>
+                                <th>DT Total</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Datos generados por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de Detalles -->
+    <div id="ticketModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Detalles del Ticket</h3>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Contenido inyectado por JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js?v=5"></script>
+</body>
+</html>

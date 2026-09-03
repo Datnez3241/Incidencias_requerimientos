@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket Extractor</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 250px;
+      padding: 16px;
+      background-color: #f9fafb;
+      margin: 0;
+      position: relative;
+    }
+    h2 {
+      font-size: 16px;
+      margin-top: 0;
+      color: #111827;
+      text-align: center;
+    }
+    p {
+      font-size: 13px;
+      color: #4b5563;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .primary-btn {
+      width: 100%;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .primary-btn:hover {
+      background-color: #1d4ed8;
+    }
+    .sharepoint-btn {
+      width: 100%;
+      background-color: #0f7b3e;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .sharepoint-btn:hover {
+      background-color: #0a5c2d;
+    }
+    .sharepoint-btn:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 12px;
+      font-size: 12px;
+      text-align: center;
+      color: #059669;
+      font-weight: bold;
+    }
+    .settings-icon {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 18px;
+      cursor: pointer;
+      color: #6b7280;
+      transition: transform 0.3s, color 0.3s;
+    }
+    .settings-icon:hover {
+      color: #111827;
+      transform: rotate(90deg);
+    }
+    .toggle-btn {
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .toggle-on {
+      background-color: #10b981;
+    }
+    .toggle-off {
+      background-color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="settingsBtn" class="settings-icon" title="Configuración">⚙️</div>
+
+  <h2>Extractor de Casos</h2>
+  <p>Abre un ticket (IM o RF) y haz clic para guardar en la nube.</p>
+  
+  <!-- Sección: Configuración General -->
+  <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #e5e7eb; padding: 8px; border-radius: 6px;">
+    <label style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">2do Plano:</label>
+    <button id="autoExtractToggleBtn" class="toggle-btn toggle-on">ACTIVADO</button>
+  </div>
+  
+  <div id="configPanel" style="display: none; margin-bottom: 12px; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; background: #ffffff;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 8px; text-align: left;">Configuración Oculta</label>
+    
+    <label style="font-size: 11px; font-weight: bold;">Responsable por defecto:</label>
+    <input type="text" id="responsableInput" placeholder="Responsable (ej. DIEGO)" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; margin-bottom: 8px; box-sizing: border-box;">
+    
+    <label style="font-size: 11px; font-weight: bold;">Operación por defecto:</label>
+    <select id="platformSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+      <option value="Telefonia">Telefonia</option>
+      <option value="Datos">Datos</option>
+      <option value="Hotspot">Hotspot</option>
+      <option value="Corredores">Corredores</option>
+      <option value="Cultivarte">Cultivarte</option>
+    </select>
+  </div>
+
+  <!-- Sección: Clasificación del Ticket -->
+  <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f9fafb;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 8px; text-align: left;">Clasificación</label>
+    
+
+    <div style="margin-bottom: 8px;">
+      <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #374151;">Causa:</label>
+      <select id="causaSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+        <option value="">-- Sin causa --</option>
+        <option value="FIBRA">FIBRA</option>
+        <option value="IP RAN">IP RAN</option>
+        <option value="MOVIL">MÓVIL</option>
+        <option value="RADIO">RADIO</option>
+        <option value="CLIENTE">CLIENTE</option>
+      </select>
+    </div>
+
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <label style="font-size: 11px; font-weight: bold; color: #374151; margin: 0;">Subida Solar:</label>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: #4b5563;">
+          <input type="checkbox" id="subidaSolarToggle" style="margin: 0; cursor: pointer;"> Habilitar
+        </label>
+      </div>
+      <input type="date" id="subidaSolarDate" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;" disabled>
+    </div>
+  </div>
+
+  <!-- Sección: Actualización Manual -->
+  <div style="margin-bottom: 12px;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 4px; text-align: left;">Actualización Manual</label>
+    <textarea id="updateNote" rows="3" placeholder="Si deseas actualizar el caso manual, escribe aquí..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></textarea>
+  </div>
+
+  <!-- Sección: Acciones -->
+  <div style="margin-bottom: 8px;">
+    <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
+  </div>
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

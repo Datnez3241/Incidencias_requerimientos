@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket Extractor</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 250px;
+      padding: 16px;
+      background-color: #f9fafb;
+      margin: 0;
+      position: relative;
+    }
+    h2 {
+      font-size: 16px;
+      margin-top: 0;
+      color: #111827;
+      text-align: center;
+    }
+    p {
+      font-size: 13px;
+      color: #4b5563;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .primary-btn {
+      width: 100%;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .primary-btn:hover {
+      background-color: #1d4ed8;
+    }
+    #status {
+      margin-top: 12px;
+      font-size: 12px;
+      text-align: center;
+      color: #059669;
+      font-weight: bold;
+    }
+    .settings-icon {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 18px;
+      cursor: pointer;
+      color: #6b7280;
+      transition: transform 0.3s, color 0.3s;
+    }
+    .settings-icon:hover {
+      color: #111827;
+      transform: rotate(90deg);
+    }
+    .toggle-btn {
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .toggle-on {
+      background-color: #10b981;
+    }
+    .toggle-off {
+      background-color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="settingsBtn" class="settings-icon" title="Configuración">⚙️</div>
+
+  <h2>Extractor de Casos</h2>
+  <p>Abre un ticket (IM o RF) y haz clic para guardar en la nube.</p>
+  
+  <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #e5e7eb; padding: 8px; border-radius: 6px;">
+    <label style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">2do Plano:</label>
+    <button id="autoExtractToggleBtn" class="toggle-btn toggle-on">ACTIVADO</button>
+  </div>
+  
+  <div id="configPanel" style="display: none; margin-bottom: 12px; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; background: #ffffff;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 8px; text-align: left;">Configuración Oculta</label>
+    
+    <label style="font-size: 11px; font-weight: bold;">Responsable por defecto:</label>
+    <input type="text" id="responsableInput" placeholder="Responsable (ej. DIEGO)" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; margin-bottom: 8px; box-sizing: border-box;">
+    
+    <label style="font-size: 11px; font-weight: bold;">Plataforma por defecto:</label>
+    <select id="platformSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+      <option value="Telefonía">Telefonía</option>
+      <option value="Datos">Datos</option>
+      <option value="Hotspot">Hotspot</option>
+    </select>
+  </div>
+
+  <textarea id="updateNote" rows="3" placeholder="Si deseas actualizar el caso manual, escribe aquí..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></textarea>
+  <br><br>
+  <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
