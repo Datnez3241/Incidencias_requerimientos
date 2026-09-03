@@ -38,6 +38,26 @@
     .primary-btn:hover {
       background-color: #1d4ed8;
     }
+    .sharepoint-btn {
+      width: 100%;
+      background-color: #0f7b3e;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .sharepoint-btn:hover {
+      background-color: #0a5c2d;
+    }
+    .sharepoint-btn:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
     #status {
       margin-top: 12px;
       font-size: 12px;
@@ -81,8 +101,20 @@
   <div id="settingsBtn" class="settings-icon" title="Configuración">⚙️</div>
 
   <h2>Extractor de Casos</h2>
-  <p>Abre un ticket (IM o RF) y haz clic para guardar en la nube.</p>
+  <p style="margin-bottom: 8px;">Abre un ticket (IM o RF) y guarda en la nube.</p>
   
+  <!-- Tarjeta de Vista Previa del Ticket -->
+  <div id="previewCard" style="margin-bottom: 12px; padding: 10px; border: 1px solid #3b82f6; border-radius: 8px; background: #eff6ff; display: flex; flex-direction: column; gap: 4px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span id="previewTicketNum" style="font-weight: 800; font-size: 13px; color: #1e40af;">🔍 Escaneando pestaña...</span>
+      <span id="previewStatusBadge" style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 12px; background: #9ca3af; color: white;">--</span>
+    </div>
+    <div id="previewDetails" style="font-size: 11px; color: #3b82f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+      Esperando ticket activo...
+    </div>
+  </div>
+
+  <!-- Sección: Configuración General -->
   <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #e5e7eb; padding: 8px; border-radius: 6px;">
     <label style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">2do Plano:</label>
     <button id="autoExtractToggleBtn" class="toggle-btn toggle-on">ACTIVADO</button>
@@ -94,17 +126,65 @@
     <label style="font-size: 11px; font-weight: bold;">Responsable por defecto:</label>
     <input type="text" id="responsableInput" placeholder="Responsable (ej. DIEGO)" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; margin-bottom: 8px; box-sizing: border-box;">
     
-    <label style="font-size: 11px; font-weight: bold;">Plataforma por defecto:</label>
+    <label style="font-size: 11px; font-weight: bold;">Operación por defecto:</label>
     <select id="platformSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
-      <option value="Telefonía">Telefonía</option>
+      <option value="Telefonia">Telefonia</option>
       <option value="Datos">Datos</option>
       <option value="Hotspot">Hotspot</option>
+      <option value="Corredores">Corredores</option>
+      <option value="Cultivarte">Cultivarte</option>
     </select>
   </div>
 
-  <textarea id="updateNote" rows="3" placeholder="Si deseas actualizar el caso manual, escribe aquí..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></textarea>
-  <br><br>
-  <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
+  <!-- Sección: Clasificación del Ticket -->
+  <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f9fafb;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 8px; text-align: left;">Clasificación</label>
+    
+
+    <div style="margin-bottom: 8px;">
+      <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #374151;">Causa:</label>
+      <select id="causaSelect" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+        <option value="">-- Sin causa --</option>
+        <option value="FIBRA">FIBRA</option>
+        <option value="IP RAN">IP RAN</option>
+        <option value="MOVIL">MÓVIL</option>
+        <option value="RADIO">RADIO</option>
+        <option value="CLIENTE">CLIENTE</option>
+      </select>
+    </div>
+
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <label style="font-size: 11px; font-weight: bold; color: #374151; margin: 0;">Subida Solar:</label>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: #4b5563;">
+          <input type="checkbox" id="subidaSolarToggle" style="margin: 0; cursor: pointer;"> Habilitar
+        </label>
+      </div>
+      <input type="date" id="subidaSolarDate" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;" disabled>
+    </div>
+  </div>
+
+  <!-- Sección: Actualización Manual y Plantillas -->
+  <div style="margin-bottom: 12px;">
+    <label style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #6b7280; display: block; margin-bottom: 4px; text-align: left;">Actualización Manual</label>
+    
+    <select id="quickNotesSelect" style="width: 100%; padding: 6px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; margin-bottom: 6px; box-sizing: border-box; background: #ffffff; color: #374151;">
+      <option value="">⚡ Usar plantilla de nota rápida...</option>
+      <option value="Se escala caso a N2 / Soporte del proveedor.">🚀 Escalar a N2 / Soporte Proveedor</option>
+      <option value="En contacto con cliente para pruebas de servicio.">📞 Pruebas con cliente en proceso</option>
+      <option value="Se realizan trabajos en sitio / cambio de equipo.">🔧 Trabajos en sitio / Cambio equipo</option>
+      <option value="Pendiente ventana de mantenimiento programada.">⏳ Pendiente ventana mantenimiento</option>
+      <option value="Pruebas OK, cliente confirma solución del servicio.">✅ Pruebas OK / Cliente confirma</option>
+      <option value="Servicio degradado por falla masiva en la zona.">🚨 Falla masiva en zona</option>
+    </select>
+
+    <textarea id="updateNote" rows="3" placeholder="Si deseas actualizar el caso manual, escribe aquí..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></textarea>
+  </div>
+
+  <!-- Sección: Acciones -->
+  <div style="margin-bottom: 8px;">
+    <button id="extractBtn" class="primary-btn">Forzar Guardado en Nube</button>
+  </div>
   <div id="status"></div>
 
   <script src="popup.js"></script>

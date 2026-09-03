@@ -127,18 +127,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseSMDate(dateStr) {
         if (!dateStr) return null;
-        // Format expected: DD/MM/YY HH:mm:ss
         const parts = dateStr.split(' ');
         if (parts.length < 1) return null;
         const dateParts = parts[0].split('/');
         if (dateParts.length === 3) {
             let day = parseInt(dateParts[0], 10);
-            let month = parseInt(dateParts[1], 10) - 1; // 0-indexed
+            let month = parseInt(dateParts[1], 10) - 1;
             let year = parseInt(dateParts[2], 10);
             if (year < 100) year += 2000;
             return new Date(year, month, day);
         }
         return new Date(dateStr);
+    }
+
+    function parseFullDate(dateStr) {
+        if (!dateStr) return 0;
+        const parts = dateStr.trim().split(/[\s/:]+/);
+        if (parts.length >= 5) {
+            let d = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+            let hr = parseInt(parts[3], 10), min = parseInt(parts[4], 10), sec = parts.length > 5 ? parseInt(parts[5], 10) : 0;
+            return new Date(y, m, d, hr, min, sec).getTime();
+        }
+        const d = new Date(dateStr).getTime();
+        return isNaN(d) ? 0 : d;
     }
 
     const applyFilters = () => {
@@ -151,11 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let dateTo = dateToVal ? new Date(dateToVal + 'T23:59:59') : null;
         
         const filtered = allTickets.filter(t => {
-            // Search filter
-            const matchesSearch = (t.TICKET && t.TICKET.toLowerCase().includes(term)) || 
-                                  (t.CODIGO && t.CODIGO.toLowerCase().includes(term));
+            let matchesSearch = true;
+            if (term !== '') {
+                const imText = t.IM ? String(t.IM).toLowerCase() : '';
+                const codText = t.CODIGO ? String(t.CODIGO).toLowerCase() : '';
+                matchesSearch = imText.includes(term) || codText.includes(term);
+            }
             
-            // Status filter
             let matchesStatus = true;
             const estado = (t.ESTADO || '').toLowerCase();
             const isAbierto = !estado.includes('cerrado') && !estado.includes('resuelto');
@@ -163,13 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterVal === 'open' && !isAbierto) matchesStatus = false;
             if (filterVal === 'closed' && isAbierto) matchesStatus = false;
 
-            // Platform filter
             let matchesPlatform = true;
             if (currentPlatform !== 'Todas') {
-                matchesPlatform = (t.PLATAFORMA === currentPlatform);
+                matchesPlatform = (t.OPERACION === currentPlatform || t.PLATAFORMA === currentPlatform);
             }
 
-            // Date filter
             let matchesDate = true;
             if (dateFrom || dateTo) {
                 const ticketDate = parseSMDate(t["CREACION TICKET"]);
@@ -182,43 +194,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return matchesSearch && matchesStatus && matchesPlatform && matchesDate;
         });
         
-        // Ordenamiento personalizado: 
-        // 1. Abiertos primero, Cerrados después.
-        // 2. Si están abiertos, los más antiguos primero (para dar prioridad).
-        // 3. Si están cerrados, los más recientes primero.
         filtered.sort((a, b) => {
             const getStatusRank = (statusStr) => {
                 const s = (statusStr || '').toLowerCase();
-                if (s.includes('cerrado') || s.includes('resuelto')) return 1; // Closed
-                return 0; // Open
+                if (s.includes('cerrado') || s.includes('resuelto')) return 1;
+                return 0;
             };
             const rankA = getStatusRank(a.ESTADO);
             const rankB = getStatusRank(b.ESTADO);
             
             if (rankA !== rankB) {
-                return rankA - rankB; // Abiertos (0) antes que Cerrados (1)
+                return rankA - rankB;
             }
-
-            const parseFullDate = (dateStr) => {
-                if (!dateStr) return 0;
-                const parts = dateStr.trim().split(/[\s/:]+/);
-                if (parts.length >= 5) {
-                    let d = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, y = parseInt(parts[2], 10);
-                    if (y < 100) y += 2000;
-                    let hr = parseInt(parts[3], 10), min = parseInt(parts[4], 10), sec = parts.length > 5 ? parseInt(parts[5], 10) : 0;
-                    return new Date(y, m, d, hr, min, sec).getTime();
-                }
-                const d = new Date(dateStr).getTime();
-                return isNaN(d) ? 0 : d;
-            };
 
             const timeA = parseFullDate(a["CREACION TICKET"]);
             const timeB = parseFullDate(b["CREACION TICKET"]);
 
             if (rankA === 0) {
-                return timeA - timeB; // Abiertos: más antiguos primero
+                return timeA - timeB;
             } else {
-                return timeB - timeA; // Cerrados: más recientes primero
+                return timeB - timeA;
             }
         });
 
@@ -248,8 +243,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (response.ok) {
                 const data = await response.json();
-                allTickets = data;
-                applyFilters(); // Aplica filtros y actualiza currentFilteredTickets
+                allTickets = data.map(t => {
+                    if (!t.OPERACION && t.PLATAFORMA) {
+                        t.OPERACION = t.PLATAFORMA;
+                    }
+                    // Normalizar FUERZA MAYOR: SI→Si, NO→No
+                    const fm = String(t['FUERZA MAYOR'] || '').trim().toUpperCase();
+                    t['FUERZA MAYOR'] = fm === 'SI' ? 'Si' : fm === 'NO' ? 'No' : (t['FUERZA MAYOR'] || '');
+                    // Normalizar SUBIDA SOLAR: YYYY-MM-DD→DD/MM/YY, SI/NO→vacío
+                    const sv = String(t['SUBIDA SOLAR'] || '').trim();
+                    if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') {
+                        t['SUBIDA SOLAR'] = '';
+                    } else {
+                        const isoMatch = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                        if (isoMatch) t['SUBIDA SOLAR'] = `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(2)}`;
+                    }
+                    return t;
+                });
+                applyFilters();
             } else {
                 console.error("Error from Supabase:", await response.text());
             }
@@ -259,41 +270,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function parseDescAndAct(t) {
+        let causa = String(t.CAUSA || '').trim();
         let desc = String(t.DESCRIPCION || '').trim();
-        let act = String(t.ACTUALIZACION || '').trim();
         let obs = String(t.OBSERVACION || '').trim();
 
-        if (desc === 'Descripción:' || desc === 'Descripción' || desc.toLowerCase() === 'null') {
-            desc = '';
+        // Compatibilidad hacia atrás: Si no hay CAUSA pero existe ACTUALIZACION,
+        // entonces DESCRIPCION (que viene de la base de datos) es en realidad la antigua CAUSA.
+        // Y ACTUALIZACION es la nueva DESCRIPCION.
+        if (!t.CAUSA && t.ACTUALIZACION) {
+            causa = String(t.DESCRIPCION || '').trim();
+            desc = String(t.ACTUALIZACION || '').trim();
         }
 
-        if ((!desc || desc === 'null') && (!act || act === 'null') && obs) {
-            const parts = obs.split(/(?:\r?\n){2,}/);
-            let actBlocks = [];
-            let descLines = [];
-
-            parts.forEach(part => {
-                const trimmed = part.trim();
-                if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
-                    actBlocks.push(trimmed);
-                } else if (trimmed && trimmed !== 'Descripción:' && trimmed !== 'Descripción') {
-                    descLines.push(trimmed);
-                }
-            });
-
-            if (actBlocks.length > 0) act = actBlocks.join('\n\n');
-            if (descLines.length > 0) desc = descLines.join('\n\n');
-            if (!desc && !act) desc = obs;
+        if (causa === 'Descripción:' || causa === 'Descripción' || causa.toLowerCase() === 'null') {
+            causa = '';
         }
 
-        if (!desc && t.SERVICIO) {
+        if ((!causa || causa === 'null') && (!desc || desc === 'null') && obs) {
+            // Intentar extraer datos basados en PLANTILLA CIERRE
+            const causaMatch = obs.match(/Causa de la falla:\s*([\s\S]*?)(?=\r?\n\s*(?:Soluci[oó]n de la falla:|Falla Atribuible a:|$))/i);
+            const solucionMatch = obs.match(/Soluci[oó]n de la falla:\s*([\s\S]*?)(?=\r?\n\s*(?:Falla Atribuible a:|Causa de la falla:|$))/i);
+
+            let extractedCausa = causaMatch ? causaMatch[1].trim() : '';
+            let extractedSolucion = solucionMatch ? solucionMatch[1].trim() : '';
+
+            if (extractedCausa || extractedSolucion) {
+                causa = extractedCausa;
+                // Asignamos la "Solución" como la Descripción del ticket
+                desc = extractedSolucion; 
+            } else {
+                // Lógica original para otros formatos de bitácora
+                const parts = obs.split(/(?:\r?\n){2,}/);
+                let descBlocks = [];
+                let causaLines = [];
+
+                parts.forEach(part => {
+                    const trimmed = part.trim();
+                    if (trimmed.startsWith('[') || trimmed.match(/^-\s*\[/)) {
+                        descBlocks.push(trimmed);
+                    } else if (trimmed && trimmed !== 'Descripción:' && trimmed !== 'Descripción') {
+                        causaLines.push(trimmed);
+                    }
+                });
+
+                if (descBlocks.length > 0) desc = descBlocks.join('\n\n');
+                if (causaLines.length > 0) causa = causaLines.join('\n\n');
+                if (!causa && !desc) causa = obs;
+            }
+        }
+
+        if (!causa && t.SERVICIO) {
             const parts = String(t.SERVICIO).split('+');
-            desc = parts[parts.length - 1].trim();
+            causa = parts[parts.length - 1].trim();
         }
 
         return {
-            desc: desc && desc !== 'null' ? desc : '-',
-            act: act && act !== 'null' ? act : '-'
+            causa: causa && causa !== 'null' ? causa : '-',
+            desc: desc && desc !== 'null' ? desc : '-'
         };
     }
 
@@ -304,21 +337,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const allColumns = [
-            { header: "TICKET", key: "TICKET", index: 1 },
-            { header: "RESPONSABLE", key: "RESPONSABLE", index: 2 },
-            { header: "CODIGO", key: "CODIGO", index: 3 },
-            { header: "SERVICIO", key: "SERVICIO", index: 4 },
-            { header: "ESTADO", key: "ESTADO", index: 5 },
-            { header: "DESCRIPCION", key: "DESCRIPCION", index: 6 },
-            { header: "ACTUALIZACION", key: "ACTUALIZACION", index: 7 },
-            { header: "CIERRE", key: "CIERRE", index: 8 },
-            { header: "CREACION TICKET", key: "CREACION TICKET", index: 9 },
-            { header: "INDISPONIBILIDAD", key: "INDISPONIBILIDAD", index: 10 },
-            { header: "SUBIDA SOLAR", key: "SUBIDA SOLAR", index: 11 },
-            { header: "FUERZA MAYOR", key: "FUERZA MAYOR", index: 12 },
-            { header: "DOWN TIME CLARO", key: "DOWN TIME CLARO", index: 13 },
-            { header: "DOWN TIME DAVIVIENDA", key: "DOWN TIME DAVIVIENDA", index: 14 },
-            { header: "DOWN TIME TOTAL", key: "DOWN TIME TOTAL", index: 15 }
+            { header: "IM", key: "IM", index: 1 },
+            { header: "OPERACION", key: "OPERACION", index: 2 },
+            { header: "RESPONSABLE", key: "RESPONSABLE", index: 3 },
+            { header: "CODIGO", key: "CODIGO", index: 4 },
+            { header: "SERVICIO", key: "SERVICIO", index: 5 },
+            { header: "CAUSA", key: "CAUSA", index: 6 },
+            { header: "ESTADO", key: "ESTADO", index: 7 },
+            { header: "DESCRIPCION", key: "DESCRIPCION", index: 8 },
+            { header: "CIERRE", key: "CIERRE", index: 9 },
+            { header: "CREACION TICKET", key: "CREACION TICKET", index: 10 },
+            { header: "INDISPONIBILIDAD", key: "INDISPONIBILIDAD", index: 11 },
+            { header: "SUBIDA SOLAR", key: "SUBIDA SOLAR", index: 12 },
+            { header: "FUERZA MAYOR", key: "FUERZA MAYOR", index: 13 },
+            { header: "DOWN TIME CLARO", key: "DOWN TIME CLARO", index: 14 },
+            { header: "DOWN TIME DAVIVIENDA", key: "DOWN TIME DAVIVIENDA", index: 15 },
+            { header: "DOWN TIME TOTAL", key: "DOWN TIME TOTAL", index: 16 }
         ];
 
         const columnMenu = document.getElementById('columnMenu');
@@ -347,8 +381,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = parseDescAndAct(t);
             let row = keys.map(k => {
                 let val = t[k];
+                if (k === "CAUSA") val = parsed.causa !== '-' ? parsed.causa : '';
                 if (k === "DESCRIPCION") val = parsed.desc !== '-' ? parsed.desc : '';
-                if (k === "ACTUALIZACION") val = parsed.act !== '-' ? parsed.act : '';
+                // Normalizar Fuerza Mayor: SI→Si, NO→No
+                if (k === "FUERZA MAYOR") {
+                    const fv = String(val || '').trim().toUpperCase();
+                    val = fv === 'SI' ? 'Si' : fv === 'NO' ? 'No' : (val || '');
+                }
+                // Normalizar Subida Solar: fecha DD/MM/YY o vacío
+                if (k === "SUBIDA SOLAR") {
+                    const sv = String(val || '').trim();
+                    if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') {
+                        val = '';
+                    } else {
+                        const isoMatch = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                        val = isoMatch ? `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(2)}` : sv;
+                    }
+                }
                 if (!val) val = '';
                 // Reemplazar saltos de línea para no romper las filas del CSV
                 val = String(val).replace(/\r\n/g, ' | ').replace(/\n/g, ' | ').replace(/\r/g, ' | ');
@@ -388,35 +437,49 @@ document.addEventListener('DOMContentLoaded', () => {
             let status = t.ESTADO || 'CERRADO';
             const statusLower = status.toLowerCase();
             let badgeClass = 'abierto'; // Default for any open status
-            if (statusLower.includes('cerrado') || statusLower.includes('resuelto')) {
+            const isClosed = statusLower.includes('cerrado') || statusLower.includes('resuelto');
+            if (isClosed) {
                 badgeClass = 'cerrado';
             } else if (statusLower.includes('curso')) {
                 badgeClass = 'curso';
             }
 
-            const { desc: descText, act: actText } = parseDescAndAct(t);
+            // Alerta visual para casos abiertos > 24h sin solución
+            if (!isClosed && t["CREACION TICKET"]) {
+                const createdMs = parseFullDate(t["CREACION TICKET"]);
+                if (createdMs > 0 && (Date.now() - createdMs > 24 * 3600 * 1000)) {
+                    tr.classList.add('stale-open-ticket');
+                    tr.title = '⚠️ Caso abierto con más de 24 horas sin solución';
+                }
+            }
+
+            const { causa: causaText, desc: descText } = parseDescAndAct(t);
 
             tr.innerHTML = `
-                <td><strong>${t.TICKET || '-'}</strong></td>
+                <td><strong>${t.IM || '-'}</strong></td>
+                <td>${t.OPERACION || '-'}</td>
                 <td>${t.RESPONSABLE || '-'}</td>
                 <td>${t.CODIGO || '-'}</td>
                 <td title="${t.SERVICIO || ''}"><div class="obs-cell text-clamp">${t.SERVICIO || '-'}</div></td>
+                <td title="${causaText}"><div class="obs-cell text-clamp">${causaText}</div></td>
                 <td><span class="badge ${badgeClass}">${status}</span></td>
                 <td title="${descText}"><div class="obs-cell text-clamp">${descText}</div></td>
-                <td title="${actText}"><div class="obs-cell text-clamp">${actText}</div></td>
                 <td title="${t.CIERRE || ''}"><div class="obs-cell text-clamp">${t.CIERRE || '-'}</div></td>
                 <td>${t["CREACION TICKET"] || '-'}</td>
-                <td>${t.INDISPONIBILIDAD || '-'}</td>
-                <td class="td-toggle">
-                    <span class="btn-toggle ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
-                          data-id="${t.id}" data-field="SUBIDA SOLAR" data-value="${t['SUBIDA SOLAR']||'NO'}">
-                        ${(t['SUBIDA SOLAR']||'NO').toUpperCase()==='SI'?'SI':'NO'}
-                    </span>
-                </td>
+                <td>${(() => { const iv = (t.INDISPONIBILIDAD||'').trim(); return (!iv || iv === 'PENDIENTE' || iv === 'NO') ? '' : iv; })()}</td>
+                <td>${(() => { 
+                    const sv = (t['SUBIDA SOLAR']||'').trim(); 
+                    if (!sv || sv.toUpperCase() === 'NO' || sv.toUpperCase() === 'SI') return ''; 
+                    // Handle YYYY-MM-DD from date input without timezone offset
+                    const isoMatch = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(2)}`;
+                    const d = new Date(sv); 
+                    return isNaN(d.getTime()) ? sv : d.toLocaleDateString('es-CO', {day:'2-digit', month:'2-digit', year:'2-digit'}); 
+                })()}</td>
                 <td class="td-toggle">
                     <span class="btn-toggle ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'toggle-si':'toggle-no'}" 
                           data-id="${t.id}" data-field="FUERZA MAYOR" data-value="${t['FUERZA MAYOR']||'NO'}">
-                        ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'SI':'NO'}
+                        ${(t['FUERZA MAYOR']||'NO').toUpperCase()==='SI'?'Si':'No'}
                     </span>
                 </td>
                 <td>${t["DOWN TIME CLARO"] || '0'}</td>
@@ -426,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn-view" data-index="${i}" title="Ver Detalles" style="background: transparent; border: none; color: #10b981; cursor: pointer; padding: 2px;">
                         <i class="ph ph-eye" style="font-size: 14px;"></i>
                     </button>
-                    <button class="btn-edit" data-id="${t.id}" data-act="${actText !== '-' ? actText : ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Actualización" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
+                    <button class="btn-edit" data-id="${t.id}" data-desc="${descText !== '-' ? descText : ''}" data-obs="${t.OBSERVACION || ''}" title="Editar Descripción" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 2px;">
                         <i class="ph ph-pencil-simple" style="font-size: 14px;"></i>
                     </button>
                     <button class="btn-delete" data-id="${t.id}" title="Eliminar Ticket" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">
@@ -455,8 +518,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sinoDropdown.className = 'sino-dropdown';
         sinoDropdown.style.display = 'none';
         sinoDropdown.innerHTML = `
-            <label class="sino-option" data-val="SI"><input type="radio" name="sinoval" value="SI"> SI</label>
-            <label class="sino-option" data-val="NO"><input type="radio" name="sinoval" value="NO"> NO</label>
+            <label class="sino-option" data-val="SI"><input type="radio" name="sinoval" value="SI"> Si</label>
+            <label class="sino-option" data-val="NO"><input type="radio" name="sinoval" value="NO"> No</label>
         `;
         document.body.appendChild(sinoDropdown);
 
@@ -467,8 +530,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const field = el.getAttribute('data-field');
             const currentVal = el.getAttribute('data-value').toUpperCase();
 
-            // Actualizar visualmente de inmediato
-            el.textContent = newVal;
+            // Actualizar visualmente de inmediato (convirtiendo a Si/No)
+            el.textContent = newVal === 'SI' ? 'Si' : 'No';
             el.setAttribute('data-value', newVal);
             el.classList.toggle('toggle-si', newVal === 'SI');
             el.classList.toggle('toggle-no', newVal === 'NO');
@@ -493,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     // Revertir si falla
-                    el.textContent = currentVal;
+                    el.textContent = currentVal === 'SI' ? 'Si' : 'No';
                     el.setAttribute('data-value', currentVal);
                     el.classList.toggle('toggle-si', currentVal === 'SI');
                     el.classList.toggle('toggle-no', currentVal === 'NO');
@@ -548,16 +611,16 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', (e) => {
                 const idx = e.currentTarget.getAttribute('data-index');
                 const t = tickets[idx];
-                const { desc: descVal, act: actVal } = parseDescAndAct(t);
+                const { causa: causaVal, desc: descVal } = parseDescAndAct(t);
                 
-                document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.TICKET || 'Sin ID');
+                document.getElementById('modalTitle').textContent = 'Ticket: ' + (t.IM || 'Sin ID');
                 
                 // --- Extraer el último registro con timestamp [DD/MM/AA HH:mm:ss] ---
-                const actText = actVal !== '-' ? actVal : '';
+                const descText = descVal !== '-' ? descVal : '';
                 const timestampRegex = /(?:^|[\s-]+)(\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\][\s\S]*?)(?=(?:\s*-?\s*\[\d{2}\/\d{2}\/\d{2,4}\s+\d{2}:\d{2}:\d{2}\])|$)/g;
                 const matches = [];
                 let match;
-                while ((match = timestampRegex.exec(actText)) !== null) {
+                while ((match = timestampRegex.exec(descText)) !== null) {
                     matches.push(match[1].trim());
                 }
                 const lastRecord = matches.length > 0 ? matches[matches.length - 1] : null;
@@ -584,9 +647,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <p><strong>Servicio:</strong><br>${t.SERVICIO || '-'}</p>
                     <br>
-                    <p><strong>Descripción de la Solicitud:</strong><br><span style="color:#444;">${descVal}</span></p>
+                    <p><strong>Causa (Antes Descripción):</strong><br><span style="color:#444;">${causaVal}</span></p>
                     <br>
-                    <p><strong>Actualización / Pendientes (Bitácora):</strong><br><span style="color:#444;">${actVal}</span></p>
+                    <p><strong>Descripción / Actualización (Bitácora):</strong><br><span style="color:#444;">${descVal}</span></p>
                     ${lastRecord ? `
                     <hr style="border:0; border-top:1px solid #ccc; margin: 10px 0;">
                     <div style="background-color:#fffacd; border-left: 3px solid #999; padding: 6px 10px;">
@@ -607,10 +670,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.currentTarget.getAttribute('data-id');
-                const oldAct = e.currentTarget.getAttribute('data-act') || e.currentTarget.getAttribute('data-obs') || '';
-                const newAct = prompt('Editar Actualización / Pendientes:', oldAct);
+                const oldDesc = e.currentTarget.getAttribute('data-desc') || e.currentTarget.getAttribute('data-obs') || '';
+                const newDesc = prompt('Editar Descripción / Actualización:', oldDesc);
                 
-                if (newAct !== null && newAct !== oldAct) {
+                if (newDesc !== null && newDesc !== oldDesc) {
                     try {
                         const SUPABASE_URL = 'https://yjcgklhdoohuoxmifpnw.supabase.co';
                         const SUPABASE_KEY = 'sb_publishable_kCR2lZlyJuzIlwjuXArOLQ_IJ3KXxre';
@@ -621,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ ACTUALIZACION: newAct, OBSERVACION: newAct })
+                            body: JSON.stringify({ DESCRIPCION: newDesc, OBSERVACION: newDesc })
                         });
                         if (response.ok) {
                             fetchData(); // Recargar datos
@@ -669,6 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let open = 0;
         let closed = 0;
         let totalDowntime = 0;
+        let dtClaroTotal = 0;
+        let dtDaviTotal = 0;
 
         tickets.forEach(t => {
             const status = (t.ESTADO || '').toLowerCase();
@@ -680,16 +745,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 closed++;
             }
 
-            const dt = parseInt(t["DOWN TIME TOTAL"]);
-            if (!isNaN(dt)) {
-                totalDowntime += dt;
-            }
+            const dt = parseInt(t["DOWN TIME TOTAL"], 10);
+            if (!isNaN(dt)) totalDowntime += dt;
+
+            const dtC = parseInt(t["DOWN TIME CLARO"], 10);
+            if (!isNaN(dtC)) dtClaroTotal += dtC;
+
+            const dtD = parseInt(t["DOWN TIME DAVIVIENDA"], 10);
+            if (!isNaN(dtD)) dtDaviTotal += dtD;
         });
 
         document.getElementById('kpiTotal').textContent = total;
         document.getElementById('kpiOpen').textContent = open;
         document.getElementById('kpiClosed').textContent = closed;
         document.getElementById('kpiDowntime').textContent = totalDowntime;
+        const elClaro = document.getElementById('kpiDtClaro');
+        if (elClaro) elClaro.textContent = dtClaroTotal;
+        const elDavi = document.getElementById('kpiDtDavi');
+        if (elDavi) elDavi.textContent = dtDaviTotal;
         
         updateCharts(tickets, open, closed);
     }

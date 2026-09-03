@@ -449,3 +449,12 @@ tr:hover td {
 .col-hidden {
     display: none !important;
 }
+
+/* Alerta de ticket inactivo por más de 24 horas */
+tr.stale-open-ticket td {
+    background-color: #fef3c7 !important; /* Ámbar suave */
+}
+
+tr.stale-open-ticket:hover td {
+    background-color: #fde68a !important;
+}

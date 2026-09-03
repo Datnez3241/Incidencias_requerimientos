@@ -17,7 +17,7 @@
             </div>
             <nav id="sidebarNav">
                 <a href="#" class="active" data-platform="Todas"><i class="ph ph-warning"></i> Incidentes (Todos)</a>
-                <a href="#" data-platform="Telefonía"><i class="ph ph-headphones"></i> Telefonía</a>
+                <a href="#" data-platform="Telefonia"><i class="ph ph-headphones"></i> Telefonia</a>
                 <a href="#" data-platform="Datos"><i class="ph ph-book"></i> Datos</a>
                 <a href="#" data-platform="Hotspot"><i class="ph ph-star"></i> Hotspot</a>
                 
@@ -50,15 +50,23 @@
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-header">Casos Abiertos</div>
-                    <div class="kpi-value" id="kpiOpen">0</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-header">Downtime (Min)</div>
-                    <div class="kpi-value" id="kpiDowntime">0</div>
+                    <div class="kpi-value" id="kpiOpen" style="color: #d97706;">0</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-header">Casos Cerrados</div>
-                    <div class="kpi-value" id="kpiClosed">0</div>
+                    <div class="kpi-value" id="kpiClosed" style="color: #059669;">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">DT Total (Min)</div>
+                    <div class="kpi-value" id="kpiDowntime">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">DT Claro</div>
+                    <div class="kpi-value" id="kpiDtClaro" style="color: #2563eb;">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">DT Davivienda</div>
+                    <div class="kpi-value" id="kpiDtDavi" style="color: #dc2626;">0</div>
                 </div>
             </section>
 
@@ -109,7 +117,7 @@
 
                     <div class="input-group">
                         <i class="ph ph-magnifying-glass"></i>
-                        <input type="text" id="searchInput" placeholder="Buscar por TICKET o CÓDIGO...">
+                        <input type="text" id="searchInput" placeholder="Buscar por IM o CÓDIGO...">
                     </div>
                     <button id="exportBtn">
                         <i class="ph ph-export"></i> Exportar
@@ -120,13 +128,14 @@
                     <table id="ticketsTable">
                         <thead>
                             <tr>
-                                <th>Ticket <i class="ph ph-caret-up-down"></i></th>
+                                <th>IM <i class="ph ph-caret-up-down"></i></th>
+                                <th>Operación <i class="ph ph-caret-up-down"></i></th>
                                 <th>Responsable <i class="ph ph-caret-up-down"></i></th>
                                 <th>Código <i class="ph ph-caret-up-down"></i></th>
                                 <th>Servicio <i class="ph ph-caret-up-down"></i></th>
+                                <th>Causa <i class="ph ph-caret-up-down"></i></th>
                                 <th>Estado <i class="ph ph-caret-up-down"></i></th>
                                 <th>Descripción <i class="ph ph-caret-up-down"></i></th>
-                                <th>Actualización <i class="ph ph-caret-up-down"></i></th>
                                 <th>Cierre <i class="ph ph-caret-up-down"></i></th>
                                 <th>Inicio <i class="ph ph-caret-up-down"></i></th>
                                 <th>Indisp. <i class="ph ph-caret-up-down"></i></th>
@@ -161,6 +170,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html>
